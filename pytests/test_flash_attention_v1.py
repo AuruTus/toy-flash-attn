@@ -10,7 +10,7 @@ from utils import mm_attn
 toy_mha_flash_attn = load(
     name="toy_mha_flash_attn",
     sources=[
-        "csrc/flash_attn.cu",
+        "csrc/flash_attn_v1.cu",
         "csrc/binding.cpp",
     ],
     extra_cflags=["-O2", "-std=c++17"],

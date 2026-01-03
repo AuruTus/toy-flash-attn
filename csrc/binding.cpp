@@ -1,6 +1,6 @@
 #include <torch/extension.h>
 
-torch::Tensor toy_flash_attn_cuda(
+extern torch::Tensor toy_flash_attn_cuda(
     torch::Tensor q,
     torch::Tensor k,
     torch::Tensor v
