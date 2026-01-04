@@ -4,17 +4,9 @@ import torch
 import pytest
 from torch.utils.cpp_extension import load
 
+from toy_attn.flash_attn_v1 import toy_mha_flash_attn
+
 from utils import mm_attn
-
-
-toy_mha_flash_attn = load(
-    name="toy_mha_flash_attn",
-    sources=[
-        "csrc/flash_attn_v1.cu",
-        "csrc/binding.cpp",
-    ],
-    extra_cflags=["-O2", "-std=c++17"],
-)
 
 device = torch.device("cuda")
 

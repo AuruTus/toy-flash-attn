@@ -1,5 +1,9 @@
 .vscode/
 
-.pytest_cache/
-__pycache__/
 .python-version
+
+__pycache__/
+
+
+.hypothesis/
+.pytest_cache/
