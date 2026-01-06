@@ -1,0 +1,28 @@
+---
+Language: Cpp
+AlwaysBreakTemplateDeclarations: true
+BraceWrapping:
+  AfterControlStatement: false
+  AfterFunction: false
+  AfterClass: false
+BreakBeforeBraces: Attach
+FixNamespaceComments: Yes
+IndentWidth: 4
+IncludeBlocks: Preserve  # Keeps groups of includes together
+SortIncludes: true       # Ensures includes are sorted
+
+PointerAlignment: Left
+BinPackParameters: false # Disable BinPacking to keep parameter groups distinct
+AllowAllParametersOfDeclarationOnNextLine: false # Force parameters to start on a new line if they don't fit on one line
+# AlignAfterOpenBracket: AlwaysBreak # Optional: Set this to true if you want the closing ')' on its own line
+AlignAfterOpenBracket: BlockIndent
+# AlignAfterOpenBracket: true # Optional: Set this to true if you want the closing ')' on its own line
+
+
+IncludeCategories:
+  - Regex: '^(<|")?(absl|boost|eigen|glog|gtest|opencv|tensorflow|third_party|torch|std)(/|")'
+    Priority: 1          # External libraries first
+  - Regex: '^<.*>'       
+    Priority: 2          # System headers (standard C++ headers)
+  - Regex: '.*'          
+    Priority: 3          # Project headers (default)
