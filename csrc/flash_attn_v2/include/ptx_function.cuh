@@ -1,9 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <type_traits>
+#include "common.h"
+
+namespace flash_attn_v2 {
 
 template <typename value_t>
     requires(
@@ -96,3 +95,5 @@ void ldmatrix_x4_transpose(
                  : "=r"(a1), "=r"(a2), "=r"(a3), "=r"(a4)
                  : "r"(smem_ptr));
 }
+
+} // namespace flash_attn_v2

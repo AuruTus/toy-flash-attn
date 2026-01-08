@@ -4,6 +4,7 @@
 
 #include "load_store.cuh"
 
+namespace flash_attn_v2 {
 template <typename value_t, int N>
 struct RFVector {
     static constexpr auto size = N;
@@ -18,9 +19,9 @@ template <typename value_t, int n_copies, int row_fragments, int col_fragments>
 struct RFMatrix {
     using storage_t = std::conditional_t<sizeof(value_t) == 4, float, uint32_t>;
 
-    static constexpr int regs_per_fragment = sizeof(value_t) / 2;
-    static constexpr int rows = row_fragments;
-    static constexpr int cols = col_fragments * regs_per_fragment;
+    static constexpr auto regs_per_fragment = sizeof(value_t) / 2;
+    static constexpr auto rows = row_fragments;
+    static constexpr auto cols = col_fragments * regs_per_fragment;
 
     storage_t regs[n_copies][rows][cols];
 
@@ -140,3 +141,5 @@ struct MatrixLDST {
         );
     }
 };
+
+}

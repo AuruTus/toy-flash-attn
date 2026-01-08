@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cuda.h>
+#include "common.h"
 #include "ptx_function.cuh"
+
+namespace flash_attn_v2 {
 
 struct LDSTCommon {
     const bool swizzled;
@@ -36,13 +39,6 @@ struct TensorLDSTConfig {
     const bool load_entire_block_into_rf;
     const int mma_load_stages;
 };
-
-constexpr int ROWS_PER_FRAGMENT = 8;
-constexpr int COLS_PER_FRAGMENT = 8;
-constexpr int GSM_LDST_ROWS_PER_ITER = 4;
-constexpr int BYTES_PER_VEC4_ACCESS = 16;
-
-constexpr int ELEMS_PER_VEC4_ACCESS = 8;
 
 template <typename T, typename value_t>
 concept gmem_smem_op = requires(value_t* gmem, value_t* smem) {
@@ -236,3 +232,5 @@ __forceinline__ __device__ constexpr void convert_to_16_bit_dtype(
         }
     }
 }
+
+} // namespace flash_attn_v2
