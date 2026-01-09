@@ -48,7 +48,7 @@ concept gmem_smem_op = requires(value_t* gmem, value_t* smem) {
 template <typename T>
 struct GM2SM_async {
     __device__ static void run(T* gmem, T* smem) {
-        cp_async<BYTES_PER_VEC4_ACCESS / sizeof(T), T>(smem, gmem);
+        cp_async<BYTES_PER_VEC4_ACCESS, T>(smem, gmem);
     }
 };
 
