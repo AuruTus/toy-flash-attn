@@ -31,7 +31,5 @@ constexpr int ROWS_PER_FRAGMENT = LDMATRIX_MAT_SIZE;
 constexpr int COLS_PER_FRAGMENT = LDMATRIX_MAT_SIZE;
 
 constexpr int GSM_LDST_ROWS_PER_ITER = 4;
-constexpr int BYTES_PER_VEC4_ACCESS = 16;
-constexpr int ELEMS_PER_VEC4_ACCESS = 8;
 
 }; // namespace flash_attn_v2
