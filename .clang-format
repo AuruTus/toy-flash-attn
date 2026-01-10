@@ -1,24 +1,35 @@
 ---
+# ================================
+#          CUDA C++ base options
+# ================================
 Language: Cpp
-AlwaysBreakTemplateDeclarations: true
+Standard: c++20
+BasedOnStyle: Google
+
+# ================================
+#        general options
+# ================================
+IndentWidth: 4
+AccessModifierOffset: -4
+BreakBeforeBraces: Attach
 BraceWrapping:
   AfterControlStatement: false
   AfterFunction: false
   AfterClass: false
-BreakBeforeBraces: Attach
-FixNamespaceComments: Yes
-IndentWidth: 4
+  AfterNamespace: false
+  AfterEnum: false
+UseTab: Never
+NamespaceIndentation: None
+ReflowComments: true
+
+
+# =================================
+#          scope options
+# =================================
 IncludeBlocks: Preserve  # Keeps groups of includes together
 SortIncludes: true       # Ensures includes are sorted
-
-PointerAlignment: Left
-BinPackParameters: false # Disable BinPacking to keep parameter groups distinct
-AllowAllParametersOfDeclarationOnNextLine: false # Force parameters to start on a new line if they don't fit on one line
-# AlignAfterOpenBracket: AlwaysBreak # Optional: Set this to true if you want the closing ')' on its own line
-AlignAfterOpenBracket: BlockIndent
-# AlignAfterOpenBracket: true # Optional: Set this to true if you want the closing ')' on its own line
-
-
+FixNamespaceComments: true
+# include sorting options
 IncludeCategories:
   - Regex: '^(<|")?(absl|boost|eigen|glog|gtest|opencv|tensorflow|third_party|torch|std)(/|")'
     Priority: 1          # External libraries first
@@ -26,3 +37,37 @@ IncludeCategories:
     Priority: 2          # System headers (standard C++ headers)
   - Regex: '.*'          
     Priority: 3          # Project headers (default)
+
+
+# =================================
+#       identifier options
+# =================================
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+
+# =================================
+#     function signature options
+# =================================
+BreakTemplateDeclarations: Yes
+BreakBeforeTemplateCloser: true
+BreakBeforeConceptDeclarations: Always
+RequiresClausePosition: OwnLineWithBrace
+BinPackParameters: OnePerLine # Disable BinPacking to keep parameter groups distinct
+AllowAllParametersOfDeclarationOnNextLine: false # Force parameters to start on a new line if they don't fit on one line
+AlignAfterOpenBracket: BlockIndent # Optional: Set this to true if you want the closing ')' on its own line
+AllowShortFunctionsOnASingleLine: Inline
+
+
+# =================================
+#      asm codes block
+# =================================
+BreakBeforeInlineASMColon: OnlyMultiline
+
+
+# =================================
+#   statements alignment options
+# =================================
+AlignConsecutiveAssignments: true
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: Left
