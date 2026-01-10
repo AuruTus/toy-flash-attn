@@ -20,8 +20,8 @@ struct RFMatrix {
     using storage_t = std::conditional_t<sizeof(value_t) == 4, float, uint32_t>;
 
     static constexpr auto regs_per_fragment = sizeof(value_t) / 2;
-    static constexpr auto rows = row_fragments;
-    static constexpr auto cols = col_fragments * regs_per_fragment;
+    static constexpr auto rows              = row_fragments;
+    static constexpr auto cols              = col_fragments * regs_per_fragment;
 
     storage_t regs[n_copies][rows][cols];
 
@@ -31,9 +31,9 @@ struct RFMatrix {
     }
 
     __forceinline__ __device__ constexpr void zero() {
-        [[unroll]]
+        FA_UNROLL
         for (int j = 0; j < rows; ++j) {
-            [[unroll]]
+            FA_UNROLL
             for (int k = 0; k < cols; ++k) {
                 this->regs[j][k] = 0;
             }
@@ -45,18 +45,21 @@ template <
     TensorLDSTConfig ldst,
     typename value_t,
     typename index_t = int64_t,
-    int WARP_SIZE = 32>
+    int WARP_SIZE    = 32
+>
 struct MatrixLDST {
     using matrix_storage_t = RFMatrix<
         value_t,
         ldst.mma_load_stages,
         ldst.RF.row_fragments,
-        ldst.RF.col_fragments>;
+        ldst.RF.col_fragments
+    >;
 
     using GM2SM_op = std::conditional_t<
         ldst.Common.async_copy,
         GM2SM_async<value_t>,
-        GM2SM<value_t>>;
+        GM2SM<value_t>
+    >;
 
     using SM2GM_op = SM2GM<value_t>;
 
@@ -84,12 +87,12 @@ struct MatrixLDST {
         value_t* smem_ptr,
     )
         : lane_id(threadIdx.x % WARP_SIZE) {
-        const int warp_rank = threadIdx.x / WARP_SIZE;
+        const int warp_rank    = threadIdx.x / WARP_SIZE;
         const index_t warp_seq = ldst.warp_ldst_rows * warp_rank;
 
         this->gmem_seq_stride = gmem_seq_stride;
-        this->gmem_ptr = gmem_block_ptr + warp_seq * gemem_seq_stride;
-        this->smem_gsm_ptr = smem_ptr + warp_seq * ldst.smem_cols;
+        this->gmem_ptr        = gmem_block_ptr + warp_seq * gemem_seq_stride;
+        this->smem_gsm_ptr    = smem_ptr + warp_seq * ldst.smem_cols;
         this->smem_srm_ptr =
             ldst.compute_over_entire_blocks ? smem_ptr : smem_gsm_ptr;
     }
@@ -142,4 +145,4 @@ struct MatrixLDST {
     }
 };
 
-}
+}  // namespace flash_attn_v2

@@ -71,7 +71,8 @@ template <
     TensorLDSTConfig CFG,
     typename value_t,
     typename index_t = int64_t,
-    int WARP_SIZE = 32>
+    int WARP_SIZE    = 32
+>
     requires gmem_smem_op<OP, value_t>
 __forceinline__ __device__ void copy_block_GSM(
     value_t* gmem,
@@ -83,15 +84,15 @@ __forceinline__ __device__ void copy_block_GSM(
         CFG.GSM.row_fragments * ROWS_PER_FRAGMENT / GSM_LDST_ROWS_PER_ITER;
 
     constexpr auto col_fragments_per_iter = WARP_SIZE / GSM_LDST_ROWS_PER_ITER;
-    constexpr auto col_fragments_per_row = CFG.smem_cols / COLS_PER_FRAGMENT;
+    constexpr auto col_fragments_per_row  = CFG.smem_cols / COLS_PER_FRAGMENT;
 
-    const auto thread_row = lane_id / col_fragments_per_iter;
+    const auto thread_row          = lane_id / col_fragments_per_iter;
     const auto thread_col_fragment = lane_id % col_fragments_per_iter;
 
-    [[unroll]]
+    FA_UNROLL
     for (int r = 0; r < n_row_iters; ++r) {
         const auto curr_row = r * GSM_LDST_ROWS_PER_ITER + thread_row;
-        [[unroll]]
+        FA_UNROLL
         for (int c = 0; c < col_fragments_per_row;
              c += col_fragments_per_iter) {
             const auto col_fragment = c + thread_col_fragment;
@@ -121,13 +122,13 @@ __forceinline__ __device__ void copy_warp_fragment_SM2RF(
     constexpr auto col_fragments = CFG.smem_cols / ELEMS_PER_VEC4_ACCESS;
     constexpr auto col_fragments_per_iter = WARP_SIZE / rows_per_iter;
 
-    const auto thread_row = lane_id % rows_per_iter;
+    const auto thread_row          = lane_id % rows_per_iter;
     const auto thread_col_fragment = lane_id / rows_per_iter;
 
-    [[unroll]]
+    FA_UNROLL
     for (int r = 0; r < CFG.RF.row_fragments; r += row_fragments_per_iter) {
         const auto curr_row = thread_row + r * ROWS_PER_FRAGMENT;
-        [[unroll]]
+        FA_UNROLL
         for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
             const auto smem_col_fragment =
                 thread_col_fragment + c + col_fragment_offset;
@@ -155,14 +156,14 @@ __forceinline__ __device__ void copy_warp_fragment_transposed_SM2RF(
     constexpr auto col_fragments = CFG.smem_cols / ELEMS_PER_VEC4_ACCESS;
     constexpr auto col_fragments_per_iter = WARP_SIZE / rows_per_iter;
 
-    const auto thread_row = lane_id % rows_per_iter;
+    const auto thread_row          = lane_id % rows_per_iter;
     const auto thread_col_fragment = lane_id / rows_per_iter;
 
-    [[unroll]]
+    FA_UNROLL
     for (int r = 0; r < CFG.RF.row_fragments; r += row_fragments_per_iter) {
         const auto curr_row =
             thread_row + (r + row_fragment_offset) * ROWS_PER_FRAGMENT;
-        [[unroll]]
+        FA_UNROLL
         for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
             const auto smem_col_fragment = thread_col_fragment + c;
 
@@ -182,18 +183,18 @@ __forceinline__ __device__ void copy_warp_fragment_RF2SM(
     value_t* smem,
     const int lane_id
 ) {
-    constexpr auto rows_per_iter = ROWS_PER_FRAGMENT;
+    constexpr auto rows_per_iter          = ROWS_PER_FRAGMENT;
     constexpr auto col_fragments_per_iter = 1;
     constexpr auto col_fragments = CFG.smem_cols / ELEMS_PER_VEC4_ACCESS;
 
     constexpr auto elems_per_store = 2;
-    const auto thread_row = lane_id / 4;
-    const auto thread_inner_col = (lane_id % 4) * elems_per_store;
+    const auto thread_row          = lane_id / 4;
+    const auto thread_inner_col    = (lane_id % 4) * elems_per_store;
 
-    [[unroll]]
+    FA_UNROLL
     for (int r = 0; r < CFG.RF.row_fragments; ++r) {
         const auto curr_row = r * rows_per_iter + thread_row;
-        [[unroll]]
+        FA_UNROLL
         for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
             const auto smem_col_fragment = c;
             reinterpret_cast<uint32_t*>(
@@ -210,7 +211,8 @@ template <
     typename value_t,
     int M_fragments,
     int N_fragments,
-    bool is_half = std::is_same_v<value_t, half>>
+    bool is_half = std::is_same_v<value_t, half>
+>
 __forceinline__ __device__ constexpr void convert_to_16_bit_dtype(
     float (&src_float)[M_fragments][N_fragments * 2],
     uint32_t (&dest_uint)[M_fragments][N_fragments]
@@ -220,9 +222,9 @@ __forceinline__ __device__ constexpr void convert_to_16_bit_dtype(
     auto src = reinterpret_cast<float2(&)[M_fragments][N_fragments]>(src_float);
     auto dest =
         reinterpret_cast<value2_t(&)[M_fragments][N_fragments]>(dest_uint);
-    [[unroll]]
+    FA_UNROLL
     for (int m = 0; m < M_fragments; ++m) {
-        [[unroll]]
+        FA_UNROLL
         for (int n = 0; n < N_fragments; ++n) {
             if constexpr (is_half) {
                 dest[m][n] = __float22half2_rn(src[m][n]);
@@ -233,4 +235,4 @@ __forceinline__ __device__ constexpr void convert_to_16_bit_dtype(
     }
 }
 
-} // namespace flash_attn_v2
+}  // namespace flash_attn_v2
