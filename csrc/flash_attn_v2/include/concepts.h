@@ -12,6 +12,19 @@ concept gmem_smem_op = requires(value_t* gmem, value_t* smem) {
     { T::run(gmem, smem) } -> std::same_as<void>;
 };
 
+template <typename T>
+concept storage_trait = requires {
+    typename T::storage_t;
+    { T::rows } -> std::convertible_to<int64_t>;
+    { T::cols } -> std::convertible_to<int64_t>;
+
+    requires requires(T t, const int stage) {
+        {
+            t.data(stage)
+        } -> std::same_as<typename T::storage_t(&)[T::rows][T::cols]>;
+    };
+};
+
 template <typename T, typename value_t, typename index_t = int64_t>
 concept ldst_trait = requires {
     requires requires(
@@ -23,8 +36,19 @@ concept ldst_trait = requires {
     requires requires(T t) {
         { t.copy_GM2SM() } -> std::same_as<void>;
         { t.copy_SM2RF() } -> std::same_as<void>;
+        { t.copy_RF2SM() } -> std::same_as<void>;
         { t.copy_SM2GM() } -> std::same_as<void>;
         { t.advance_gmem_block() } -> std::same_as<void>;
+    };
+
+    typename T::matrix_storage_t;
+    requires storage_trait<typename T::matrix_storage_t>;
+    requires requires(T t, const int stage) {
+        {
+            t.data(stage)
+        } -> std::same_as<typename T::matrix_storage_t::storage_t(&)
+                              [T::matrix_storage_t::rows]
+                              [T::matrix_storage_t::cols]>;
     };
 
     { T::load_entire_block_into_rf } -> std::convertible_to<bool>;
@@ -34,6 +58,17 @@ concept ldst_trait = requires {
 template <typename T>
 concept fragment_trait = requires {
     { T::QO_fragments_per_warp } -> std::convertible_to<int64_t>;
+};
+
+template <typename T>
+concept gemm_trait = requires {
+    typename T::A_t;
+    typename T::B_t;
+    typename T::C_t;
+    typename T::value_t;
+
+    requires ldst_trait<typename T::A_t, typename T::value_t>;
+    requires ldst_trait<typename T::B_t, typename T::value_t>;
 };
 
 template <typename Kernel>
@@ -64,6 +99,9 @@ concept kernel_trait = requires {
     // clang-format on
 
     typename Kernel::S_QK_GEMM;
+    typename Kernel::O_PV_GEMM;
+    requires gemm_trait<typename Kernel::S_QK_GEMM>;
+    requires gemm_trait<typename Kernel::O_PV_GEMM>;
 
     { Kernel::async } -> std::convertible_to<bool>;
     { Kernel::B_r } -> std::convertible_to<typename Kernel::index_t>;

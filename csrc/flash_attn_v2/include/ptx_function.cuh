@@ -52,13 +52,18 @@ __device__ void mma_m16n8k16_f32_accum(
     }
 }
 
+template <bool async>
 __device__ void cp_async_commit() {
-    asm volatile("cp.async.commit_group;\n");
+    if constexpr (async) {
+        asm volatile("cp.async.commit_group;\n");
+    }
 }
 
-template <int ngroups>
+template <int ngroups, bool async>
 __device__ void cp_async_wait() {
-    asm volatile("cp.async.wait_group %0;\n" ::"n"(ngroups));
+    if constexpr (async) {
+        asm volatile("cp.async.wait_group %0;\n" ::"n"(ngroups));
+    }
 }
 
 template <int size, typename T>
