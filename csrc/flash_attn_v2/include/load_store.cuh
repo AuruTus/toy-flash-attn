@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include "common.h"
+#include "concepts.h"
 #include "ptx_function.cuh"
 
 namespace flash_attn_v2 {
@@ -38,11 +39,6 @@ struct TensorLDSTConfig {
 
     const bool load_entire_block_into_rf;
     const int mma_load_stages;
-};
-
-template <typename T, typename value_t>
-concept gmem_smem_op = requires(value_t* gmem, value_t* smem) {
-    { T::run(gmem, smem) } -> std::same_as<void>;
 };
 
 template <typename T>

@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
-#include <type_traits>
 
 namespace flash_attn_v2 {
 
