@@ -60,6 +60,12 @@ AllowShortFunctionsOnASingleLine: Inline
 
 
 # =================================
+#      macro codes block
+# =================================
+AlignEscapedNewlines: Right
+
+
+# =================================
 #      asm codes block
 # =================================
 BreakBeforeInlineASMColon: OnlyMultiline
@@ -70,4 +76,3 @@ BreakBeforeInlineASMColon: OnlyMultiline
 # =================================
 AlignConsecutiveAssignments: true
 AlignConsecutiveMacros: true
-AlignEscapedNewlines: Left
