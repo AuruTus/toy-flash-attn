@@ -7,6 +7,7 @@
 #include "load_store.cuh"
 #include "ptx_function.cuh"
 #include "softmax.cuh"
+#include "static_kernel_config.cuh"
 
 namespace flash_attn_v2 {
 
@@ -48,7 +49,7 @@ __global__ void flash_forward_kernel(
     using O_accum_t = typename Kernel::O_accum_t;
     using O_value_t = typename Kernel::O_value_t;
 
-    constexpr bool async = Kernel::async;
+    constexpr bool async_copy = Kernel::async_copy;
 
     const int sample      = blockIdx.z;
     const int head        = blockIdx.y;
@@ -88,11 +89,11 @@ __global__ void flash_forward_kernel(
 
     // Start the async copy of the Q and K tiles.
     Q.copy_GM2SM();
-    cp_async_commit<async>();
+    cp_async_commit<async_copy>();
     if constexpr (Kernel::eager_load_blocks) {
         K.copy_GM2SM();
         K.advance_gmem_block();
-        cp_async_commit<async>();
+        cp_async_commit<async_copy>();
     }
 
     O_accum.zero();
@@ -112,9 +113,9 @@ __global__ void flash_forward_kernel(
     if constexpr (Q_t::load_entire_block_into_rf) {
         if constexpr (Kernel::eager_load_blocks) {
             // We only wait for the Q block to finish loading.
-            cp_async_wait<1, async>();
+            cp_async_wait<1, async_copy>();
         } else {
-            cp_async_wait<0, async>();
+            cp_async_wait<0, async_copy>();
         }
 
         // We need the __syncwarp() in addition to the cp_async_wait()
@@ -130,14 +131,14 @@ __global__ void flash_forward_kernel(
         if constexpr (!Kernel::eager_load_blocks) {
             K.copy_GM2SM();
             K.advance_gmem_block();
-            cp_async_commit<async>();
+            cp_async_commit<async_copy>();
         }
         // Initialize the registers for S to 0.
         S_accum.zero();
 
         // Block until we've copied the K block-tile for this iteration into
         // shared memory.
-        cp_async_wait<0, async>();
+        cp_async_wait<0, async_copy>();
         // After this barrier, it is safe to load the next V block, because all
         // warps have done the previous PV matmul.
         __syncthreads();
@@ -147,14 +148,14 @@ __global__ void flash_forward_kernel(
             // do not wait until after the S=QK matmul.
             V.copy_GM2SM();
             V.advance_gmem_block();
-            cp_async_commit<async>();
+            cp_async_commit<async_copy>();
         }
         if constexpr (K_t::load_entire_block_into_rf) {
             K.copy_SM2RF();
         }
 
         matmul<Kernel::S_QK_GEMM>(Q, K, S_accum);
-        cp_async_wait<0, async>();
+        cp_async_wait<0, async_copy>();
         // After this barrier, it is safe to load the next block of K.
         __syncthreads();
 
@@ -165,7 +166,7 @@ __global__ void flash_forward_kernel(
             if (j < args.n_KV_blocks - 1) {
                 K.copy_GM2SM();
                 K.advance_gmem_block();
-                cp_async_commit<async>();
+                cp_async_commit<async_copy>();
             }
         }
 
@@ -192,8 +193,8 @@ __global__ void flash_forward_kernel(
             // Load V from gmem to smem and block until it is done.
             V.copy_GM2SM();
             V.advance_gmem_block();
-            cp_async_commit<async>();
-            cp_async_wait<0, async>();
+            cp_async_commit<async_copy>();
+            cp_async_wait<0, async_copy>();
             __syncthreads();
         }
 
