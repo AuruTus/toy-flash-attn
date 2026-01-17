@@ -4,6 +4,7 @@
 #include "common.h"
 #include "concepts.h"
 #include "ptx_function.cuh"
+#include "swizzling.cuh"
 
 namespace flash_attn_v2 {
 
@@ -91,15 +92,18 @@ __forceinline__ __device__ void copy_block_GSM(
         FA_UNROLL
         for (int c = 0; c < col_fragments_per_row;
              c += col_fragments_per_iter) {
-            const auto col_fragment = c + thread_col_fragment;
+            const auto gmem_col_fragment = c + thread_col_fragment;
+            const auto smem_col_fragment = get_smem_col_fragment<
+                col_fragments_per_row, CFG.Common.swizzled
+            >(curr_row, gmem_col_fragment);
 
             OP::run(
                 &gmem
                     [curr_row * gmem_seq_stride +
-                     col_fragment * COLS_PER_FRAGMENT],
+                     gmem_col_fragment * COLS_PER_FRAGMENT],
                 &smem
                     [curr_row * CFG.smem_cols +
-                     col_fragment * COLS_PER_FRAGMENT]
+                     smem_col_fragment * COLS_PER_FRAGMENT]
             );
         }
     }
@@ -127,7 +131,9 @@ __forceinline__ __device__ void copy_warp_fragment_SM2RF(
         FA_UNROLL
         for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
             const auto smem_col_fragment =
-                thread_col_fragment + c + col_fragment_offset;
+                get_smem_col_fragment<col_fragments, CFG.Common.swizzled>(
+                    curr_row, thread_col_fragment + c + col_fragment_offset
+                );
 
             ldmatrix_x4(
                 &smem
@@ -161,13 +167,16 @@ __forceinline__ __device__ void copy_warp_fragment_transposed_SM2RF(
             thread_row + (r + row_fragment_offset) * ROWS_PER_FRAGMENT;
         FA_UNROLL
         for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
-            const auto smem_col_fragment = thread_col_fragment + c;
+            const auto smem_col_fragment =
+                get_smem_col_fragment<col_fragments, CFG.Common.swizzled>(
+                    curr_row, thread_col_fragment + c
+                );
 
             ldmatrix_x4_transpose(
                 &smem
                     [curr_row * CFG.smem_cols +
                      smem_col_fragment * ELEMS_PER_VEC4_ACCESS],
-                regs[c][r], regs[c + 1][r], regs[c][r + 1], regs[c + 1][r + 1]
+                regs[c][r], regs[c][r + 1], regs[c + 1][r], regs[c + 1][r + 1]
             );
         }
     }
@@ -192,7 +201,10 @@ __forceinline__ __device__ void copy_warp_fragment_RF2SM(
         const auto curr_row = r * rows_per_iter + thread_row;
         FA_UNROLL
         for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
-            const auto smem_col_fragment = c;
+            const auto smem_col_fragment =
+                get_smem_col_fragment<col_fragments, CFG.Common.swizzled>(
+                    curr_row, c
+                );
             reinterpret_cast<uint32_t*>(
                 &smem
                     [curr_row * CFG.smem_cols +
