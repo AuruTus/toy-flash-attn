@@ -81,6 +81,7 @@ concept kernel_trait = requires {
     typename Kernel::N;
 
     typename Kernel::value_t;
+    typename Kernel::accum_t;
     typename Kernel::index_t;
 
     requires std::convertible_to<typename Kernel::index_t, int64_t>;
@@ -97,9 +98,9 @@ concept kernel_trait = requires {
     requires ldst_trait<typename Kernel::Q_t, typename Kernel::value_t, typename Kernel::index_t>;
     requires ldst_trait<typename Kernel::K_t, typename Kernel::value_t, typename Kernel::index_t>;
     requires ldst_trait<typename Kernel::V_t, typename Kernel::value_t, typename Kernel::index_t>;
-    requires ldst_trait<typename Kernel::S_accum_t, typename Kernel::value_t, typename Kernel::index_t>;
+    requires ldst_trait<typename Kernel::S_accum_t, typename Kernel::accum_t, typename Kernel::index_t>;
     requires ldst_trait<typename Kernel::P_value_t, typename Kernel::value_t, typename Kernel::index_t>;
-    requires ldst_trait<typename Kernel::O_accum_t, typename Kernel::value_t, typename Kernel::index_t>;
+    requires ldst_trait<typename Kernel::O_accum_t, typename Kernel::accum_t, typename Kernel::index_t>;
     requires ldst_trait<typename Kernel::O_value_t, typename Kernel::value_t, typename Kernel::index_t>;
     // clang-format on
 
@@ -108,7 +109,7 @@ concept kernel_trait = requires {
     requires gemm_trait<typename Kernel::S_QK_GEMM>;
     requires gemm_trait<typename Kernel::O_PV_GEMM>;
 
-    { Kernel::async } -> std::convertible_to<bool>;
+    { Kernel::async_copy } -> std::convertible_to<bool>;
     { Kernel::B_r } -> std::convertible_to<typename Kernel::index_t>;
     { Kernel::B_c } -> std::convertible_to<typename Kernel::index_t>;
     { Kernel::d_head } -> std::convertible_to<typename Kernel::index_t>;

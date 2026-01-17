@@ -105,7 +105,7 @@ __global__ void flash_forward_kernel(
     accum_t m[N::QO_fragments_per_warp];
     accum_t l[N::QO_fragments_per_warp];
     FA_UNROLL
-    for (int q = 0; q < N::QO_fragmens_per_warp; ++q) {
+    for (int q = 0; q < N::QO_fragments_per_warp; ++q) {
         m[q] = neg_inf;
         l[q] = 0.0f;
     }

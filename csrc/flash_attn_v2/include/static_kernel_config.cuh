@@ -136,7 +136,7 @@ struct StaticForwardKernelConfig {
     }
 
     static constexpr TensorLDSTConfig Q_LDST = make_ldst_config(
-        {N::QO_fragment_per_warp, N::d_head_fragments},
+        {N::QO_fragments_per_warp, N::d_head_fragments},
         {N::QO_fragments_per_warp, N::Q_mma_load_K_fragments},
         false, /* transposed */
         CFG.B_r,
@@ -197,7 +197,7 @@ struct StaticForwardKernelConfig {
         Q_t,
         K_t,
         S_accum_t,
-        N::d_head_framgments,
+        N::d_head_fragments,
         constexpr_min(N::Q_mma_load_K_fragments, N::K_mma_load_K_fragments),
         value_t
     >;

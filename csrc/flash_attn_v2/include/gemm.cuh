@@ -28,7 +28,7 @@ struct GEMM {
     using C_t     = _C_t;
     using value_t = _value_t;
 
-    static constexpr int TotalKTiles       = total_K_fragments;
+    static constexpr int TotalTiles         = total_K_fragments;
     static constexpr int LoadKTilesPerIter = load_K_fragments_per_iter;
 
     static constexpr bool DoubleBufferA =
@@ -50,8 +50,8 @@ __forceinline__ __device__ void warp_fragment_mma_f32_accum(
     uint32_t (&regs_A)[M_fragments][K_fragments_A],
     uint32_t (&regs_B)[N_fragments][K_fragments_B],
     accum_t (&regs_C)[M_fragments][N_fragments * N_REGS_PER_F32_ACCUM_FRAGMENT],
-    int A_col_fragement_offset = 0,
-    int B_col_fragement_offset = 0
+    int A_col_fragment_offset = 0,
+    int B_col_fragment_offset = 0
 ) {
     constexpr int K_iters = constexpr_min(K_fragments_A, K_fragments_B);
     FA_UNROLL
@@ -63,15 +63,15 @@ __forceinline__ __device__ void warp_fragment_mma_f32_accum(
                 mma_m16n8k16_f32_accum<value_t>(
                     // d
                     regs_C[m][n * 2], regs_C[m][n * 2 + 1],
-                    regs_C[m + 1][n * 2 + 1], regs_C[m + 1][n * 2 + 1],
+                    regs_C[m + 1][n * 2], regs_C[m + 1][n * 2 + 1],
                     // a
-                    regs_A[m][k + A_col_fragement_offset],
-                    regs_A[m + 1][k + A_col_fragement_offset],
-                    regs_A[m][k + 1 + A_col_fragement_offset],
-                    regs_A[m + 1][k + 1 + A_col_fragement_offset],
+                    regs_A[m][k + A_col_fragment_offset],
+                    regs_A[m + 1][k + A_col_fragment_offset],
+                    regs_A[m][k + 1 + A_col_fragment_offset],
+                    regs_A[m + 1][k + 1 + A_col_fragment_offset],
                     // b
-                    regs_B[n][k + B_col_fragement_offset],
-                    regs_B[n][k + 1 + B_col_fragement_offset],
+                    regs_B[n][k + B_col_fragment_offset],
+                    regs_B[n][k + 1 + B_col_fragment_offset],
                     // c
                     regs_C[m][n * 2], regs_C[m][n * 2 + 1],
                     regs_C[m + 1][n * 2], regs_C[m + 1][n * 2 + 1]
@@ -121,7 +121,7 @@ matmul(typename GEMM::A_t& A, typename GEMM::B_t& B, typename GEMM::C_t& C) {
         }
 
         int A_col_offset =
-            A_t::load_entire_block_info_rf ? k_outer_fragment : 0;
+            A_t::load_entire_block_into_rf ? k_outer_fragment : 0;
         int B_col_offset =
             B_t::load_entire_block_into_rf ? k_outer_fragment : 0;
         warp_fragment_mma_f32_accum<value_t>(

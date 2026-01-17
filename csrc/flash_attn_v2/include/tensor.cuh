@@ -75,7 +75,7 @@ struct MatrixLDST {
     value_t* smem_srm_ptr;
     // The location in memory that the warp writes to for Q, K, V from GMEM to
     // SMEM and O for SMEM to GMEM
-    valut_t* smem_gsm_ptr;
+    value_t* smem_gsm_ptr;
 
     const int lane_id;
 
@@ -84,7 +84,7 @@ struct MatrixLDST {
     __forceinline__ __device__ MatrixLDST(
         value_t* gmem_block_ptr,
         index_t gmem_seq_stride,
-        value_t* smem_ptr,
+        value_t* smem_ptr
     )
         : lane_id(threadIdx.x % WARP_SIZE) {
         const int warp_rank    = threadIdx.x / WARP_SIZE;
@@ -124,16 +124,16 @@ struct MatrixLDST {
     }
 
     __forceinline__ __device__ constexpr void
-    copy_SM2RF(int stage = 0, int title_offset = 0) {
+    copy_SM2RF(int stage = 0, int tile_offset = 0) {
         if constexpr (!this->transposed) {
             copy_warp_fragment_SM2RF<ldst, value_t, WARP_SIZE>(
                 this->storage.data(stage), this->smem_srm_ptr, this->lane_id,
-                title_offset,
+                tile_offset
             );
         } else {
             copy_warp_fragment_transposed_SM2RF<ldst, value_t, WARP_SIZE>(
                 this->storage.data(stage), this->smem_srm_ptr, this->lane_id,
-                title_offset,
+                tile_offset
             );
         }
     }
