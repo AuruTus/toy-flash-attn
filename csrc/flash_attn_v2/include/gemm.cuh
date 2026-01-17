@@ -3,6 +3,7 @@
 #include "common.h"
 #include "concepts.h"
 #include "ptx_function.cuh"
+#include "utils.h"
 
 namespace flash_attn_v2 {
 

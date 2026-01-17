@@ -70,8 +70,8 @@ concept gemm_trait = requires {
     requires ldst_trait<typename T::A_t, typename T::value_t>;
     requires ldst_trait<typename T::B_t, typename T::value_t>;
 
-    { T::DoubleBufferA } -> std::same_as<bool>;
-    { T::DoubleBufferB } -> std::same_as<bool>;
+    { T::DoubleBufferA } -> std::convertible_to<bool>;
+    { T::DoubleBufferB } -> std::convertible_to<bool>;
     { T::TotalTiles } -> std::convertible_to<int>;
     { T::LoadKTilesPerIter } -> std::convertible_to<int>;
 };

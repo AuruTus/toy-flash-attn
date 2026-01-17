@@ -10,7 +10,7 @@ namespace flash_attn_v2 {
 
 inline constexpr int WARP_SIZE_DEFAULT = 32;
 
-inline constexpr int SHFL_ENTIRE_WARP_MASK = 0xffffffff;
+inline constexpr auto SHFL_ENTIRE_WARP_MASK = 0xffffffff;
 
 inline constexpr int N_REGS_PER_F32_ACCUM_FRAGMENT = 2;
 

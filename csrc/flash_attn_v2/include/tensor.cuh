@@ -32,10 +32,13 @@ struct RFMatrix {
 
     __forceinline__ __device__ constexpr void zero() {
         FA_UNROLL
-        for (int j = 0; j < rows; ++j) {
+        for (int i = 0; i < n_copies; ++i) {
             FA_UNROLL
-            for (int k = 0; k < cols; ++k) {
-                this->regs[j][k] = 0;
+            for (int j = 0; j < rows; ++j) {
+                FA_UNROLL
+                for (int k = 0; k < cols; ++k) {
+                    this->regs[i][j][k] = 0;
+                }
             }
         }
     }
@@ -140,7 +143,7 @@ struct MatrixLDST {
 
     __forceinline__ __device__ constexpr void copy_RF2SM() {
         copy_warp_fragment_RF2SM<ldst, value_t, WARP_SIZE>(
-            this->smem_srm_ptr, this->storage.data(0), this->lane_id
+            this->data(), this->smem_srm_ptr, this->lane_id
         );
     }
 };
