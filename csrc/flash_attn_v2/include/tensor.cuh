@@ -91,7 +91,7 @@ struct MatrixLDST {
         const index_t warp_seq = ldst.warp_ldst_rows * warp_rank;
 
         this->gmem_seq_stride = gmem_seq_stride;
-        this->gmem_ptr        = gmem_block_ptr + warp_seq * gemem_seq_stride;
+        this->gmem_ptr        = gmem_block_ptr + warp_seq * gmem_seq_stride;
         this->smem_gsm_ptr    = smem_ptr + warp_seq * ldst.smem_cols;
         this->smem_srm_ptr =
             ldst.compute_over_entire_blocks ? smem_ptr : smem_gsm_ptr;

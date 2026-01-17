@@ -10,14 +10,14 @@
 
 namespace flash_attn_v2 {
 
-template <int n, int k, bool double_buffer>
+template <int n, int K, bool double_buffer>
 constexpr void static_assert_valid_load_k_fragments() {
     static_assert(
-        (n & (n - 1)) == 0 && n != 1, "load k is power of 2 and DNE 1"
+        (n & (n - 1)) == 0 && n != 1, "load K is power of 2 and DNE 1"
     );
 
     constexpr int max_frags = (double_buffer ? K / 2 : K) / 8;
-    static_assert(n <= max_frags, "load k is <= max fragments");
+    static_assert(n <= max_frags, "load K is <= max fragments");
 }
 
 template <FlashForwardKernelConfig CFG>
@@ -177,7 +177,7 @@ struct StaticForwardKernelConfig {
         false, /* transposed */
         CFG.B_r,
         N::QO_rows_per_warp,
-        false, /* compute_over_entire_block */
+        false /* compute_over_entire_block */
     );
     using O_accum_t = MatrixLDST<O_LDST, accum_t>;
     using O_value_t = MatrixLDST<O_LDST, value_t>;
@@ -187,8 +187,8 @@ struct StaticForwardKernelConfig {
         {N::QO_fragments_per_warp, N::KV_calc_fragments},
         false, /* transposed */
         CFG.B_r,
-        0,     /* only stored in RF, not smem or gmem */
-        false, /* compute_over_entire_block */
+        0,    /* only stored in RF, not smem or gmem */
+        false /* compute_over_entire_block */
     );
     using S_accum_t = MatrixLDST<S_LDST, accum_t>;
     using P_value_t = MatrixLDST<S_LDST, value_t>;
