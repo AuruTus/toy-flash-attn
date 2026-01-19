@@ -1,5 +1,10 @@
 .vscode/
 
+# agents files
+.claude/
+.gemini/
+.github/instructions/
+
 .python-version
 
 __pycache__/
