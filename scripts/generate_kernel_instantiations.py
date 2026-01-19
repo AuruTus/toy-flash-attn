@@ -5,10 +5,14 @@ import sys
 
 import pathlib
 
+# ===============================
+#           local modules
+# ===============================
+
 SCRIPTS_DIR = pathlib.Path(os.path.dirname(__file__))
 sys.path.append(os.path.abspath(SCRIPTS_DIR.parent))
 
-from toy_attn.flash_attn_v2.kernel_configs import get_kernels_to_build
+from toy_attn.flash_attn_v2.kernel_configs import get_kernels_to_build  # noqa: E402
 
 
 is_first = True
