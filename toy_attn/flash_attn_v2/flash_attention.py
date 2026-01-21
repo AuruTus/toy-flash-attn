@@ -2,6 +2,8 @@
 
 import torch
 
+from typing import Optional
+
 from toy_attn.flash_attn_v2.kernel import flash_attention_kernels
 from toy_attn.flash_attn_v2.kernel_configs import FlashForwardKernelConfig
 
@@ -11,6 +13,7 @@ def forward(
     q: torch.Tensor,
     k: torch.Tensor,
     v: torch.Tensor,
+    o: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """
     Forward pass for flash attention.
@@ -24,4 +27,4 @@ def forward(
     Returns:
         Output tensor of shape (batch, seq_len, n_heads, d_head)
     """
-    return flash_attention_kernels.forward(cfg, q, k, v)
+    return flash_attention_kernels.forward(cfg, q, k, v, o)

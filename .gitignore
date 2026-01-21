@@ -12,3 +12,7 @@ __pycache__/
 
 .hypothesis/
 .pytest_cache/
+
+
+data/
+profiles/

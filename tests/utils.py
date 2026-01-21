@@ -4,6 +4,9 @@ import einops
 from torch.nn import functional as F
 from dataclasses import dataclass
 
+from flash_attn import flash_attn_func
+
+
 def mm_attn(
     q: torch.Tensor,
     k: torch.Tensor,
@@ -12,6 +15,23 @@ def mm_attn(
     att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
     p = F.softmax(att, dim=-1)
     return p @ v
+
+def reference_forward_kernel_v2(q, k, v, o=None):
+    head_dim = q.shape[-1]
+    out = flash_attn_func(
+        q,
+        k,
+        v,
+        dropout_p=0.0,
+        softmax_scale=head_dim**-0.5,
+        causal=False,
+        window_size=(-1, -1),
+        softcap=0.0,
+        alibi_slopes=None,
+        deterministic=False,
+        return_attn_probs=False,
+    )
+    return out[0]
 
 
 BATCH_SIZE_FOR_SEQ_LEN = {
