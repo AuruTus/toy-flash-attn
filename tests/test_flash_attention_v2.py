@@ -101,3 +101,88 @@ class TestFlashAttentionBF16:
         assert diff_fp16 <= diff_fp32 * 2, (
             f"BF16 kernel difference ({diff_fp16:.6e}) exceeds threshold (2 * FP32 baseline = {diff_fp32 * 2:.6e})"
         )
+
+
+def test_debug_minimal_kernel():
+    """Debug test with minimal tensor sizes to isolate kernel crashes."""
+    from toy_attn.flash_attn_v2.kernel_configs import FlashForwardKernelConfig
+
+    # Use smallest valid configuration
+    # seq_len must be divisible by B_r and B_c
+    B_r, B_c = 64, 64
+    d_head = 128
+    batch_size = 1
+    n_heads = 1
+    seq_len = 128  # Must be >= max(B_r, B_c) and divisible by both
+
+    device = "cuda:0"
+    dtype = torch.float16
+
+    # Create minimal config matching a built kernel
+    # B_r=64, B_c=64 with load_0_0_0 pattern (simplest)
+    cfg = FlashForwardKernelConfig(
+        dtype=DType.FP16,
+        d_head=d_head,
+        B_r=B_r,
+        B_c=B_c,
+        n_warps=4,
+        async_copy=True,  # Required by built kernels
+        eager_load_blocks=True,  # Required by built kernels
+        swizzled=True,  # Required by built kernels
+        Q_mma_load_K_tiles=0,  # Load entire block (simplest)
+        K_mma_load_K_tiles=0,
+        V_mma_load_K_tiles=0,
+        mma_double_buffer_loads=False,
+        optimized_softmax=False,
+    )
+
+    print(f"\n=== Debug Test ===")
+    print(f"Config: {cfg.short_form()}")
+    print(f"Tensor shape: ({batch_size}, {seq_len}, {n_heads}, {d_head})")
+    print(f"B_r={B_r}, B_c={B_c}, n_Q_blocks={seq_len//B_r}, n_KV_blocks={seq_len//B_c}")
+
+    # Calculate expected smem usage
+    smem_bytes = (B_r + B_c * 2) * d_head * 2  # 2 bytes per element
+    print(f"Expected smem: {smem_bytes} bytes ({smem_bytes/1024:.1f} KB)")
+
+    # Create tensors
+    q = torch.randn(batch_size, seq_len, n_heads, d_head, dtype=dtype, device=device)
+    k = torch.randn_like(q)
+    v = torch.randn_like(q)
+
+    print(f"Q stride: {q.stride()}")
+    print(f"Q is contiguous: {q.is_contiguous()}")
+
+    torch.cuda.synchronize()
+    print("Tensors created, calling kernel...")
+
+    # Call kernel
+    try:
+        result = flash_attention.forward(cfg, q, k, v)
+        torch.cuda.synchronize()
+        print(f"Kernel completed! Result shape: {result.shape}")
+
+        # Check for NaN/Inf in output
+        has_nan = torch.isnan(result).any().item()
+        has_inf = torch.isinf(result).any().item()
+        print(f"Result has NaN: {has_nan}, has Inf: {has_inf}")
+
+        if has_nan or has_inf:
+            # Find where NaN/Inf occurs
+            nan_mask = torch.isnan(result) | torch.isinf(result)
+            nan_indices = nan_mask.nonzero()
+            print(f"First few NaN/Inf indices: {nan_indices[:5].tolist()}")
+            print(f"Result sample (first few): {result.flatten()[:10].tolist()}")
+
+        # Compare with reference
+        expected = py_flash_attention(q, k, v, upcast=True)
+        diff = (result - expected).abs().max().item()
+        print(f"Max diff from reference: {diff:.6e}")
+
+        assert result.shape == q.shape, "Output shape mismatch"
+        assert not has_nan, "Output contains NaN"
+        assert not has_inf, "Output contains Inf"
+
+    except Exception as e:
+        print(f"Kernel failed with: {type(e).__name__}: {e}")
+        raise
