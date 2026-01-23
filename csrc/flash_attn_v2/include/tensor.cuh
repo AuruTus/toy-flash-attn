@@ -10,9 +10,7 @@ struct RFVector {
     static constexpr auto size = N;
     value_t regs[N];
 
-    __forceinline__ __device__ constexpr value_t& operator[](int idx) {
-        return regs[idx];
-    }
+    FA_DEVICE_CONSTEXPR value_t& operator[](int idx) { return regs[idx]; }
 };
 
 template <typename value_t, int n_copies, int row_fragments, int col_fragments>
@@ -25,12 +23,12 @@ struct RFMatrix {
 
     storage_t regs[n_copies][rows][cols];
 
-    __forceinline__ __device__ constexpr auto data(const int stage = 0)
+    FA_DEVICE_CONSTEXPR auto data(const int stage = 0)
         -> storage_t (&)[rows][cols] {
         return reinterpret_cast<storage_t(&)[rows][cols]>(regs[stage]);
     }
 
-    __forceinline__ __device__ constexpr void zero() {
+    FA_DEVICE_CONSTEXPR void zero() {
         FA_UNROLL
         for (int i = 0; i < n_copies; ++i) {
             FA_UNROLL
@@ -84,7 +82,7 @@ struct MatrixLDST {
 
     matrix_storage_t storage;
 
-    __forceinline__ __device__ MatrixLDST(
+    FA_DEVICE MatrixLDST(
         value_t* gmem_block_ptr,
         index_t gmem_seq_stride,
         value_t* smem_ptr
@@ -100,34 +98,33 @@ struct MatrixLDST {
             ldst.compute_over_entire_blocks ? smem_ptr : smem_gsm_ptr;
     }
 
-    __forceinline__ __device__ constexpr void zero() { this->storage.zero(); }
+    FA_DEVICE_CONSTEXPR void zero() { this->storage.zero(); }
 
-    __forceinline__ __device__ constexpr auto data(const int stage = 0) ->
+    FA_DEVICE_CONSTEXPR auto data(const int stage = 0) ->
         typename matrix_storage_t::storage_t (&)[matrix_storage_t::rows]
                                                 [matrix_storage_t::cols] {
         return this->storage.data(stage);
     }
 
-    __forceinline__ __device__ constexpr void advance_gmem_block() {
+    FA_DEVICE_CONSTEXPR void advance_gmem_block() {
         this->gmem_ptr += ldst.block_size * this->gmem_seq_stride;
     }
 
-    __forceinline__ __device__ constexpr void copy_GM2SM() {
+    FA_DEVICE_CONSTEXPR void copy_GM2SM() {
         copy_block_GSM<GM2SM_op, ldst, value_t, index_t, WARP_SIZE>(
             this->gmem_ptr, this->smem_gsm_ptr, this->gmem_seq_stride,
             this->lane_id
         );
     }
 
-    __forceinline__ __device__ constexpr void copy_SM2GM() {
+    FA_DEVICE_CONSTEXPR void copy_SM2GM() {
         copy_block_GSM<SM2GM_op, ldst, value_t, index_t, WARP_SIZE>(
             this->gmem_ptr, this->smem_gsm_ptr, this->gmem_seq_stride,
             this->lane_id
         );
     }
 
-    __forceinline__ __device__ constexpr void
-    copy_SM2RF(int stage = 0, int tile_offset = 0) {
+    FA_DEVICE_CONSTEXPR void copy_SM2RF(int stage = 0, int tile_offset = 0) {
         if constexpr (!this->transposed) {
             copy_warp_fragment_SM2RF<ldst, value_t, WARP_SIZE>(
                 this->storage.data(stage), this->smem_srm_ptr, this->lane_id,
@@ -141,7 +138,7 @@ struct MatrixLDST {
         }
     }
 
-    __forceinline__ __device__ constexpr void copy_RF2SM() {
+    FA_DEVICE_CONSTEXPR void copy_RF2SM() {
         copy_warp_fragment_RF2SM<ldst, value_t, WARP_SIZE>(
             this->data(), this->smem_srm_ptr, this->lane_id
         );

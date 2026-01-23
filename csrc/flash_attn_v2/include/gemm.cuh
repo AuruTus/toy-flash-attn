@@ -47,7 +47,7 @@ template <
     int K_fragments_B,
     typename accum_t = float
 >
-__forceinline__ __device__ void warp_fragment_mma_f32_accum(
+FA_DEVICE void warp_fragment_mma_f32_accum(
     uint32_t (&regs_A)[M_fragments][K_fragments_A],
     uint32_t (&regs_B)[N_fragments][K_fragments_B],
     accum_t (&regs_C)[M_fragments][N_fragments * N_REGS_PER_F32_ACCUM_FRAGMENT],
@@ -84,7 +84,7 @@ __forceinline__ __device__ void warp_fragment_mma_f32_accum(
 
 template <typename GEMM>
     requires gemm_trait<GEMM>
-__forceinline__ __device__ void
+FA_DEVICE void
 matmul(typename GEMM::A_t& A, typename GEMM::B_t& B, typename GEMM::C_t& C) {
     using A_t     = typename GEMM::A_t;
     using B_t     = typename GEMM::B_t;

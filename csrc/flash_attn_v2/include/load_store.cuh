@@ -71,7 +71,7 @@ template <
     int WARP_SIZE    = 32
 >
     requires gmem_smem_op<OP, value_t>
-__forceinline__ __device__ void copy_block_GSM(
+FA_DEVICE void copy_block_GSM(
     value_t* gmem,
     value_t* smem,
     index_t gmem_seq_stride,
@@ -110,7 +110,7 @@ __forceinline__ __device__ void copy_block_GSM(
 }
 
 template <TensorLDSTConfig CFG, typename value_t, int WARP_SIZE = 32>
-__forceinline__ __device__ void copy_warp_fragment_SM2RF(
+FA_DEVICE void copy_warp_fragment_SM2RF(
     uint32_t (&regs)[CFG.RF.row_fragments][CFG.RF.col_fragments],
     value_t* smem,
     const int lane_id,
@@ -146,7 +146,7 @@ __forceinline__ __device__ void copy_warp_fragment_SM2RF(
 }
 
 template <TensorLDSTConfig CFG, typename value_t, int WARP_SIZE = 32>
-__forceinline__ __device__ void copy_warp_fragment_transposed_SM2RF(
+FA_DEVICE void copy_warp_fragment_transposed_SM2RF(
     uint32_t (&regs)[CFG.RF.row_fragments][CFG.RF.col_fragments],
     value_t* smem,
     const int lane_id,
@@ -183,7 +183,7 @@ __forceinline__ __device__ void copy_warp_fragment_transposed_SM2RF(
 }
 
 template <TensorLDSTConfig CFG, typename value_t, int WARP_SIZE = 32>
-__forceinline__ __device__ void copy_warp_fragment_RF2SM(
+FA_DEVICE void copy_warp_fragment_RF2SM(
     uint32_t (&regs)[CFG.RF.row_fragments][CFG.RF.col_fragments],
     value_t* smem,
     const int lane_id
@@ -221,7 +221,7 @@ template <
     int N_fragments,
     bool is_half = std::is_same_v<value_t, half>
 >
-__forceinline__ __device__ constexpr void convert_to_16_bit_dtype(
+FA_DEVICE_CONSTEXPR void convert_to_16_bit_dtype(
     float (&src_float)[M_fragments][N_fragments * 2],
     uint32_t (&dest_uint)[M_fragments][N_fragments]
 ) {

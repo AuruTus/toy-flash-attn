@@ -5,7 +5,7 @@
 namespace flash_attn_v2 {
 
 template <int QO_fragments, int KV_accum_fragments, typename accum_t = float>
-__forceinline__ __device__ constexpr void scale_S_accum(
+FA_DEVICE_CONSTEXPR void scale_S_accum(
     accum_t (&S_accum)[QO_fragments][KV_accum_fragments],
     const accum_t& softmax_scale
 ) {
@@ -19,7 +19,7 @@ __forceinline__ __device__ constexpr void scale_S_accum(
 }
 
 template <int QO_fragments, int KV_accum_fragments, typename accum_t = float>
-__forceinline__ __device__ constexpr void calc_row_max(
+FA_DEVICE_CONSTEXPR void calc_row_max(
     accum_t (&S_accum)[QO_fragments][KV_accum_fragments],
     accum_t (&m_next)[QO_fragments],
     accum_t (&m_curr)[QO_fragments]
@@ -46,7 +46,7 @@ template <
     int d_head_accum_fragments,
     typename accum_t = float
 >
-__forceinline__ __device__ constexpr void scale_l_O(
+FA_DEVICE_CONSTEXPR void scale_l_O(
     accum_t (&m_next)[QO_fragments],
     accum_t (&m_curr)[QO_fragments],
     accum_t (&l)[QO_fragments],
@@ -76,7 +76,7 @@ template <
     int KV_accum_fragments,
     typename accum_t = float
 >
-__forceinline__ __device__ constexpr void exponentiate_tensor(
+FA_DEVICE_CONSTEXPR void exponentiate_tensor(
     accum_t (&S_accum)[QO_fragments][KV_accum_fragments],
     accum_t (&m)[QO_fragments],
     accum_t softmax_scale
@@ -106,7 +106,7 @@ template <
     int d_head_accum_fragments,
     typename accum_t = float
 >
-__forceinline__ __device__ constexpr void update_row_exp_sum(
+FA_DEVICE_CONSTEXPR void update_row_exp_sum(
     accum_t (&P_accum)[QO_fragments][d_head_accum_fragments],
     accum_t (&l)[QO_fragments]
 ) {
@@ -124,7 +124,7 @@ template <
     int d_head_accum_fragments,
     typename accum_t = float
 >
-__forceinline__ __device__ constexpr void final_softmax_normalization(
+FA_DEVICE_CONSTEXPR void final_softmax_normalization(
     accum_t (&Q_accum)[QO_fragments][d_head_accum_fragments],
     accum_t (&l)[QO_fragments]
 ) {

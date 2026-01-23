@@ -7,6 +7,8 @@
 namespace flash_attn_v2 {
 
 #define FA_UNROLL _Pragma("unroll")
+#define FA_DEVICE           __forceinline__ __device__
+#define FA_DEVICE_CONSTEXPR __forceinline__ __device__ constexpr
 
 inline constexpr int WARP_SIZE_DEFAULT = 32;
 
