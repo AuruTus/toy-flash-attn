@@ -27,4 +27,5 @@ def forward(
     Returns:
         Output tensor of shape (batch, seq_len, n_heads, d_head)
     """
-    return flash_attention_kernels.forward(cfg, q, k, v, o)
+    output, _ = flash_attention_kernels.forward(cfg, q, k, v, o)
+    return output

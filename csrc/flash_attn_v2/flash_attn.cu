@@ -35,7 +35,7 @@ FlashForwardKernelConfig py_to_cpp_kernel_config(const py::object& py_cfg) {
     };
 }
 
-decltype(auto) flash_attention_forward(
+auto flash_attention_forward(
     const py::object& py_cfg,
     const torch::Tensor& TQ,
     const torch::Tensor& TK,
