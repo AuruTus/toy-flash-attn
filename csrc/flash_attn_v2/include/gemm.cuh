@@ -104,8 +104,8 @@ matmul(typename GEMM::A_t& A, typename GEMM::B_t& B, typename GEMM::C_t& C) {
     }
 
     FA_UNROLL
-    for (int k_outer_fragment = 0; k_outer_fragment < GEMM::TotalTiles;) {
-        k_outer_fragment += GEMM::LoadKTilesPerIter;
+    for (int k_outer_fragment = 0; k_outer_fragment < GEMM::TotalTiles;
+         k_outer_fragment += GEMM::LoadKTilesPerIter) {
         if constexpr (!A_t::load_entire_block_into_rf ||
                       !B_t::load_entire_block_into_rf) {
             int k_load_fragment =

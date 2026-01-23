@@ -162,11 +162,11 @@ __forceinline__ __device__ void copy_warp_fragment_transposed_SM2RF(
     const auto thread_col_fragment = lane_id / rows_per_iter;
 
     FA_UNROLL
-    for (int r = 0; r < CFG.RF.row_fragments; r += row_fragments_per_iter) {
+    for (int r = 0; r < CFG.RF.col_fragments; r += row_fragments_per_iter) {
         const auto curr_row =
             thread_row + (r + row_fragment_offset) * ROWS_PER_FRAGMENT;
         FA_UNROLL
-        for (int c = 0; c < CFG.RF.col_fragments; c += col_fragments_per_iter) {
+        for (int c = 0; c < CFG.RF.row_fragments; c += col_fragments_per_iter) {
             const auto smem_col_fragment =
                 get_smem_col_fragment<col_fragments, CFG.Common.swizzled>(
                     curr_row, thread_col_fragment + c
