@@ -175,7 +175,7 @@ __global__ void flash_forward_kernel(
         if constexpr (!Kernel::optimized_softmax) {
             scale_S_accum(S_accum.data(), softmax_scale);
         }
-        calc_row_max(S_accum.data(), m, m_next);
+        calc_row_max(S_accum.data(), m_next, m);
         scale_l_O<Kernel::optimized_softmax>(
             m_next, m, l, O_accum.data(), softmax_scale
         );

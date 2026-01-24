@@ -128,7 +128,7 @@ def test_debug_minimal_kernel():
         n_warps=4,
         async_copy=True,  # Required by built kernels
         eager_load_blocks=True,  # Required by built kernels
-        swizzled=True,  # Required by built kernels
+        swizzled=False,  # Required by built kernels
         Q_mma_load_K_tiles=0,  # Load entire block (simplest)
         K_mma_load_K_tiles=0,
         V_mma_load_K_tiles=0,
@@ -145,10 +145,30 @@ def test_debug_minimal_kernel():
     smem_bytes = (B_r + B_c * 2) * d_head * 2  # 2 bytes per element
     print(f"Expected smem: {smem_bytes} bytes ({smem_bytes/1024:.1f} KB)")
 
-    # Create tensors
-    q = torch.randn(batch_size, seq_len, n_heads, d_head, dtype=dtype, device=device)
-    k = torch.randn_like(q)
-    v = torch.randn_like(q)
+    # Create debug tensors with predictable values
+    def make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device):
+        """Generate tensor with values: seq_idx * 0.001 + elem_idx * 0.000001
+
+        e.g., seq 0: 0.001001, 0.001002, ..., 0.001128
+              seq 1: 0.002001, 0.002002, ..., 0.002128
+        Same values across all n_heads.
+        """
+        # Create element indices [1, 2, ..., d_head]
+        elem_idx = torch.arange(1, d_head + 1, dtype=torch.float32, device=device)
+        # Create sequence indices [1, 2, ..., seq_len]
+        seq_idx = torch.arange(1, seq_len + 1, dtype=torch.float32, device=device)
+
+        # Compute values: seq_idx * 0.001 + elem_idx * 0.000001
+        # Shape: (seq_len, d_head)
+        values = seq_idx[:, None] * 0.001 + elem_idx[None, :] * 0.000001
+
+        # Expand to (batch_size, seq_len, n_heads, d_head)
+        values = values[None, :, None, :].expand(batch_size, seq_len, n_heads, d_head)
+        return values.to(dtype=dtype).contiguous()
+
+    q = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
+    k = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
+    v = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
 
     print(f"Q stride: {q.stride()}")
     print(f"Q is contiguous: {q.is_contiguous()}")
