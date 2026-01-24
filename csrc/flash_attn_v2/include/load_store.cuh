@@ -68,7 +68,7 @@ template <
     TensorLDSTConfig CFG,
     typename value_t,
     typename index_t = int64_t,
-    int WARP_SIZE    = 32
+    int WARP_SIZE    = WARP_SIZE_DEFAULT
 >
     requires gmem_smem_op<OP, value_t>
 FA_DEVICE void copy_block_GSM(
@@ -109,7 +109,11 @@ FA_DEVICE void copy_block_GSM(
     }
 }
 
-template <TensorLDSTConfig CFG, typename value_t, int WARP_SIZE = 32>
+template <
+    TensorLDSTConfig CFG,
+    typename value_t,
+    int WARP_SIZE = WARP_SIZE_DEFAULT
+>
 FA_DEVICE void copy_warp_fragment_SM2RF(
     uint32_t (&regs)[CFG.RF.row_fragments][CFG.RF.col_fragments],
     value_t* smem,
@@ -145,7 +149,11 @@ FA_DEVICE void copy_warp_fragment_SM2RF(
     }
 }
 
-template <TensorLDSTConfig CFG, typename value_t, int WARP_SIZE = 32>
+template <
+    TensorLDSTConfig CFG,
+    typename value_t,
+    int WARP_SIZE = WARP_SIZE_DEFAULT
+>
 FA_DEVICE void copy_warp_fragment_transposed_SM2RF(
     uint32_t (&regs)[CFG.RF.row_fragments][CFG.RF.col_fragments],
     value_t* smem,
@@ -182,7 +190,11 @@ FA_DEVICE void copy_warp_fragment_transposed_SM2RF(
     }
 }
 
-template <TensorLDSTConfig CFG, typename value_t, int WARP_SIZE = 32>
+template <
+    TensorLDSTConfig CFG,
+    typename value_t,
+    int WARP_SIZE = WARP_SIZE_DEFAULT
+>
 FA_DEVICE void copy_warp_fragment_RF2SM(
     uint32_t (&regs)[CFG.RF.row_fragments][CFG.RF.col_fragments],
     value_t* smem,

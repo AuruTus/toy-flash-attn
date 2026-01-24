@@ -46,7 +46,7 @@ template <
     TensorLDSTConfig ldst,
     typename value_t,
     typename index_t = int64_t,
-    int WARP_SIZE    = 32
+    int WARP_SIZE    = WARP_SIZE_DEFAULT
 >
 struct MatrixLDST {
     using matrix_storage_t = RFMatrix<
