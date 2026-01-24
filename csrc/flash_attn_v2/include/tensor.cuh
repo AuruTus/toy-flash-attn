@@ -42,6 +42,10 @@ struct RFMatrix {
     }
 };
 
+// MatrixLDST is an object that provides ldst and conversion functionality for a
+// block in memory. The scope of the object involves all the levels of memory
+// (gmem, smem, and the rf). Admittedly, this class does too much, but I didn't
+// want to overengineer it given the scope of this project.
 template <
     TensorLDSTConfig ldst,
     typename value_t,
@@ -92,8 +96,11 @@ struct MatrixLDST {
         const index_t warp_seq = ldst.warp_ldst_rows * warp_rank;
 
         this->gmem_seq_stride = gmem_seq_stride;
-        this->gmem_ptr        = gmem_block_ptr + warp_seq * gmem_seq_stride;
-        this->smem_gsm_ptr    = smem_ptr + warp_seq * ldst.smem_cols;
+        this->gmem_ptr        = gmem_block_ptr
+                                    ? gmem_block_ptr + warp_seq * gmem_seq_stride
+                                    : nullptr;
+        this->smem_gsm_ptr =
+            smem_ptr ? smem_ptr + warp_seq * ldst.smem_cols : nullptr;
         this->smem_srm_ptr =
             ldst.compute_over_entire_blocks ? smem_ptr : smem_gsm_ptr;
     }
