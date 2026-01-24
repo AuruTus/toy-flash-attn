@@ -45,7 +45,6 @@ flash_attention_kernels = load(
     extra_ldflags=[
         "-Wl,--no-as-needed",
         "-lcuda",
-        "-L/usr/lib/wsl/lib",
     ],
     extra_include_paths=[
         "csrc/flash_attn_v2/include",
