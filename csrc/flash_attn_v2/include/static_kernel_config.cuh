@@ -172,10 +172,31 @@ struct StaticForwardKernelConfig {
     );
     using Q_t = MatrixLDST<Q_LDST, value_t>;
 
+    // clang-format off
+    /**
+     * K and V Transpose for MMA Instructions
+     *
+     * MMA uses: mma.m16n8k16.row.col (A=row-major, B=column-major)
+     *
+     * For S = Q @ K^T:
+     *   Q (A): (B_r, d_head) row-major ✓
+     *   K^T (B): (d_head, B_c) needs column-major
+     *       → K stored as (B_c, d_head) row-major
+     *       → Row-major K[j, 0..d_head] = Column-major K^T[0..d_head, j]
+     *       → No transpose needed! (transposed=false)
+     *
+     * For O = P @ V:
+     *   P (A): (B_r, B_c) row-major ✓
+     *   V (B): (B_c, d_head) needs column-major
+     *       → V stored as (B_c, d_head) row-major
+     *       → Row-major V[k, 0..d_head] ≠ Column-major V[0..B_c, j]
+     *       → Needs ldmatrix.trans! (transposed=true)
+     */
+    // clang-format on
     static constexpr TensorLDSTConfig K_LDST = make_ldst_config(
         {N::KV_ldst_fragments_per_warp, N::d_head_fragments},
         {N::KV_calc_fragments, N::K_mma_load_K_fragments},
-        false, /* transposed */
+        false, /* transposed: row-major K = col-major K^T */
         CFG.B_c,
         N::KV_ldst_rows_per_warp,
         true, /* compute_over_entire_block */
@@ -187,7 +208,7 @@ struct StaticForwardKernelConfig {
     static constexpr TensorLDSTConfig V_LDST = make_ldst_config(
         {N::KV_ldst_fragments_per_warp, N::d_head_fragments},
         {N::d_head_fragments, N::V_mma_load_K_fragments},
-        true, /* transposed */
+        true, /* transposed: needs ldmatrix.trans for col-major */
         CFG.B_c,
         N::KV_ldst_rows_per_warp,
         true, /* compute_over_entire_block */
