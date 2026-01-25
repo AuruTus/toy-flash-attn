@@ -30,6 +30,51 @@ struct ForwardKernelArgs {
     const int n_KV_blocks;
 };
 
+// clang-format off
+/**
+ * Flash Attention Forward Kernel
+ *
+ * Tile Shapes (per thread block):
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ Tensor │ GMEM Shape         │ SMEM Tile      │ Description              │
+ * ├────────┼────────────────────┼────────────────┼──────────────────────────┤
+ * │ Q      │ (seq, d_head)      │ (B_r, d_head)  │ Query block              │
+ * │ K      │ (seq, d_head)      │ (B_c, d_head)  │ Key block (streamed)     │
+ * │ V      │ (seq, d_head)      │ (B_c, d_head)  │ Value block (streamed)   │
+ * │ O      │ (seq, d_head)      │ (B_r, d_head)  │ Output block (reuses Q)  │
+ * │ S      │ -                  │ RF only        │ QK^T scores (B_r, B_c)   │
+ * │ P      │ -                  │ RF only        │ softmax(S)  (B_r, B_c)   │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ *
+ * SMEM Layout:
+ * ┌──────────────────┬──────────────────┬──────────────────┐
+ * │  Q / O           │       K          │       V          │
+ * │  (B_r × d_head)  │  (B_c × d_head)  │  (B_c × d_head)  │
+ * └──────────────────┴──────────────────┴──────────────────┘
+ * Note: Q and O share the same SMEM region (non-overlapping lifetimes)
+ *
+ * Per-Warp Register Tiles (see static_kernel_config.cuh for RF layout):
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ Tensor  │ Logical Shape               │ Notes                           │
+ * ├─────────┼─────────────────────────────┼─────────────────────────────────┤
+ * │ Q_rf    │ (B_r/n_warps, d_head)       │ Each warp owns B_r/n_warps rows │
+ * │ K_rf    │ (B_c, d_head)               │ Full K block (all warps share)  │
+ * │ V_rf    │ (d_head, B_c)               │ Transposed for P @ V matmul     │
+ * │ S_accum │ (B_r/n_warps, B_c)          │ float32 accumulator             │
+ * │ P_b16   │ (B_r/n_warps, B_c)          │ fp16/bf16 after softmax         │
+ * │ O_accum │ (B_r/n_warps, d_head)       │ float32 accumulator             │
+ * │ O_b16   │ (B_r/n_warps, d_head)       │ fp16/bf16 for output            │
+ * │ m, l    │ (B_r/n_warps,)              │ Softmax state (row max & sum)   │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ *
+ * Computation Flow:
+ *   for each KV block j:
+ *       S[B_r, B_c] = Q[B_r, d] @ K[B_c, d]^T    // Attention scores
+ *       P[B_r, B_c] = online_softmax(S)          // Row-wise softmax
+ *       O[B_r, d]  += P[B_r, B_c] @ V[B_c, d]    // Weighted sum
+ *   O = O / l                                    // Final normalization
+ */
+// clang-format on
 template <typename Kernel>
     requires kernel_trait<Kernel>
 __global__ void flash_forward_kernel(
@@ -78,10 +123,14 @@ __global__ void flash_forward_kernel(
     auto K = K_t(gmem_K, gmem_seq_stride, smem_K);
     auto V = V_t(gmem_V, gmem_seq_stride, smem_V);
 
-    // S and P are only stored in registers.
+    // S and P are only stored in registers (RF only, no SMEM).
+    // S_accum: (B_r/n_warps, B_c) per warp, float32
+    // P_b16:   (B_r/n_warps, B_c) per warp, fp16/bf16
     auto S_accum = S_accum_t(nullptr, -1, nullptr);
     auto P_b16   = P_value_t(nullptr, -1, nullptr);
     // The accumulator for O is only kept in registers.
+    // O_accum: (B_r/n_warps, d_head) per warp, float32
+    // O_b16:   (B_r/n_warps, d_head) per warp, fp16/bf16
     // At the end of the kernel, it is then converted into a 16-bit type and
     // then copied into gmem.
     auto O_accum = O_accum_t(nullptr, -1, nullptr);
@@ -124,7 +173,8 @@ __global__ void flash_forward_kernel(
         // smem, so we need to wait on a warp-wide barrier.
         // For K and V, we will need a __syncthread() instead.
         __syncwarp();
-        Q.copy_SM2RF();
+        Q.copy_SM2RF();  // Q[B_r, d_head] SMEM -> RF (each warp: B_r/n_warps
+                         // rows)
     }
 
     for (int j = 0; j < args.n_KV_blocks; ++j) {
@@ -151,9 +201,11 @@ __global__ void flash_forward_kernel(
             cp_async_commit<async_copy>();
         }
         if constexpr (K_t::load_entire_block_into_rf) {
-            K.copy_SM2RF();
+            K.copy_SM2RF();  // K[B_c, d_head] SMEM -> RF (full block, all
+                             // warps)
         }
 
+        // S[B_r, B_c] = Q[B_r, d_head] @ K[B_c, d_head]^T
         matmul<Kernel::S_QK_GEMM>(Q, K, S_accum);
         cp_async_wait<0, async_copy>();
         // After this barrier, it is safe to load the next block of K.
@@ -170,23 +222,28 @@ __global__ void flash_forward_kernel(
             }
         }
 
-        // Online softmax
+        // Online softmax: P[B_r, B_c] = softmax(S[B_r, B_c])
+        // m: row max, l: row sum (both shape: B_r/n_warps per warp)
         accum_t m_next[N::QO_fragments_per_warp];
         if constexpr (!Kernel::optimized_softmax) {
-            scale_S_accum(S_accum.data(), softmax_scale);
+            scale_S_accum(S_accum.data(), softmax_scale);  // S *= scale
         }
-        calc_row_max(S_accum.data(), m_next, m);
-        scale_l_O<Kernel::optimized_softmax>(
-            m_next, m, l, O_accum.data(), softmax_scale
+        calc_row_max(S_accum.data(), m_next, m);  // m_next = max(m, rowmax(S))
+        scale_l_O<
+            Kernel::optimized_softmax
+        >(                                               // l *= exp(m - m_next)
+            m_next, m, l, O_accum.data(), softmax_scale  // O *= exp(m - m_next)
         );
 
-        exponentiate_tensor<Kernel::optimized_softmax>(
+        exponentiate_tensor<
+            Kernel::optimized_softmax
+        >(  // S = exp(S - m_next)
             S_accum.data(), m_next, softmax_scale
         );
 
-        update_row_exp_sum(S_accum.data(), l);
+        update_row_exp_sum(S_accum.data(), l);  // l += rowsum(S)
 
-        // Convert the S accumulator block into P fp16 input block.
+        // Convert S (float32) -> P (fp16/bf16) for MMA input
         convert_to_16_bit_dtype<value_t>(S_accum.data(), P_b16.data());
 
         if constexpr (!Kernel::eager_load_blocks) {
@@ -199,13 +256,16 @@ __global__ void flash_forward_kernel(
         }
 
         if constexpr (V_t::load_entire_block_into_rf) {
-            V.copy_SM2RF();
+            V.copy_SM2RF();  // V[B_c, d_head] -> RF
         }
 
+        // O[B_r, d_head] += P[B_r, B_c] @ V[B_c, d_head]
         matmul<typename Kernel::O_PV_GEMM>(P_b16, V, O_accum);
     }
 
+    // O = O / l (final row-wise normalization)
     final_softmax_normalization(O_accum.data(), l);
+    // Convert O (float32) -> O (fp16/bf16) for output
     convert_to_16_bit_dtype<value_t>(O_accum.data(), O_b16.data());
 
     // Instead of writing directly to gmem, we write to smem as an intermediary

@@ -111,6 +111,31 @@ struct StaticForwardKernelConfig {
 
     static constexpr LDSTCommon Common{CFG.swizzled, CFG.async_copy};
 
+    // clang-format off
+    /**
+     * Per-Tensor LDST Configuration
+     *
+     * GSM {row, col}: tile for GMEM↔SMEM transfers (per warp)
+     * RF  {row, col}: tile for SMEM↔Register transfers (per warp compute)
+     *
+     * ┌────────┬──────────────────────────────────────┬────────────────────────────────────────┐
+     * │ Tensor │ GSM {row_frag, col_frag}             │ RF {row_frag, col_frag}                │
+     * ├────────┼──────────────────────────────────────┼────────────────────────────────────────┤
+     * │ Q      │ {QO_frags_per_warp,  d_head_frags}   │ {QO_frags_per_warp,  Q_mma_load_K}     │
+     * │ K      │ {KV_ldst_frags/warp, d_head_frags}   │ {KV_calc_frags,      K_mma_load_K}     │
+     * │ V      │ {KV_ldst_frags/warp, d_head_frags}   │ {d_head_frags,       V_mma_load_K} [T] │
+     * │ O      │ {QO_frags_per_warp,  d_head_frags}   │ {QO_frags_per_warp,  d_head_frags}     │
+     * │ S/P    │ (RF only)                            │ {QO_frags_per_warp,  KV_calc_frags}    │
+     * └────────┴──────────────────────────────────────┴────────────────────────────────────────┘
+     * [T] = transposed
+     *
+     * Key differences:
+     *   - GSM col_frag: always d_head_frags (full width for coalesced load)
+     *   - RF col_frag:  mma_load_K_frags (smaller tiles for streaming MMA)
+     *   - K RF row:     KV_calc_frags (full B_c block, not per-warp)
+     *   - V RF:         transposed layout for P @ V matmul
+     */
+    // clang-format on
     static constexpr TensorLDSTConfig make_ldst_config(
         TileLayout GSM,
         TileLayout RF,
