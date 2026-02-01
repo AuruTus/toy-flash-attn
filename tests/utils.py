@@ -143,3 +143,31 @@ def get_cuda_device_info(device_idx=0):
 
 def is_a100():
     return "A100" in get_cuda_device_info()["name"]
+
+
+def make_debug_tensor(
+    batch_size: int,
+    seq_len: int,
+    n_heads: int,
+    d_head: int,
+    dtype: torch.dtype,
+    device: str | torch.device,
+) -> torch.Tensor:
+    """Generate tensor with values: seq_idx * 0.001 + elem_idx * 0.000001
+
+    e.g., seq 0: 0.001001, 0.001002, ..., 0.001128
+          seq 1: 0.002001, 0.002002, ..., 0.002128
+    Same values across all n_heads.
+    """
+    # Create element indices [1, 2, ..., d_head]
+    elem_idx = torch.arange(1, d_head + 1, dtype=torch.float32, device=device)
+    # Create sequence indices [1, 2, ..., seq_len]
+    seq_idx = torch.arange(1, seq_len + 1, dtype=torch.float32, device=device)
+
+    # Compute values: seq_idx * 0.001 + elem_idx * 0.000001
+    # Shape: (seq_len, d_head)
+    values = seq_idx[:, None] * 0.001 + elem_idx[None, :] * 0.000001
+
+    # Expand to (batch_size, seq_len, n_heads, d_head)
+    values = values[None, :, None, :].expand(batch_size, seq_len, n_heads, d_head)
+    return values.to(dtype=dtype).contiguous()
