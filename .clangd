@@ -1,0 +1,13 @@
+CompileFlags:
+  Add:
+    - "-ferror-limit=0"
+  Remove:
+    # Remove flags clangd doesn't understand (nvcc-specific)
+    - "-forward-unknown-to-host-compiler"
+    - "--generate-code*"
+    - "-gencode*"
+
+Diagnostics:
+  Suppress:
+    # CUDA built-in variables/functions clangd may not resolve
+    - "unknown_cuda_arch"

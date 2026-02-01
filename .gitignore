@@ -16,3 +16,7 @@ __pycache__/
 
 data/
 profiles/
+
+# clangd
+.cache/
+compile_flags.txt
