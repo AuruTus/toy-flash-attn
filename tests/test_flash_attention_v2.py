@@ -1,5 +1,6 @@
-import pytest
+import os
 import torch
+import pytest
 
 from toy_attn.flash_attn_v2 import flash_attention
 from toy_attn.flash_attn_v2.kernel_configs import DType, get_kernels_to_build
@@ -8,6 +9,7 @@ from utils import (
     BENCHMARK_N_HEADS,
     QKVConfig,
     generate_qkv,
+    make_debug_tensor,
     py_flash_attention,
 )
 
@@ -103,8 +105,12 @@ class TestFlashAttentionBF16:
         )
 
 
-def test_debug_minimal_kernel():
-    """Debug test with minimal tensor sizes to isolate kernel crashes."""
+@pytest.mark.skipif(
+    condition=os.environ.get("FA_DEBUG", "false").lower() != "true",
+    reason="Debug entry. Skip for normal tests",
+)
+def test_debug_nan_bug_kernel():
+    """Debug test for previous NaN bug with minimal tensor sizes."""
     from toy_attn.flash_attn_v2.kernel_configs import FlashForwardKernelConfig
 
     # Use smallest valid configuration
@@ -139,32 +145,11 @@ def test_debug_minimal_kernel():
     print(f"\n=== Debug Test ===")
     print(f"Config: {cfg.short_form()}")
     print(f"Tensor shape: ({batch_size}, {seq_len}, {n_heads}, {d_head})")
-    print(f"B_r={B_r}, B_c={B_c}, n_Q_blocks={seq_len//B_r}, n_KV_blocks={seq_len//B_c}")
+    print(f"B_r={B_r}, B_c={B_c}, n_Q_blocks={seq_len // B_r}, n_KV_blocks={seq_len // B_c}")
 
     # Calculate expected smem usage
     smem_bytes = (B_r + B_c * 2) * d_head * 2  # 2 bytes per element
-    print(f"Expected smem: {smem_bytes} bytes ({smem_bytes/1024:.1f} KB)")
-
-    # Create debug tensors with predictable values
-    def make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device):
-        """Generate tensor with values: seq_idx * 0.001 + elem_idx * 0.000001
-
-        e.g., seq 0: 0.001001, 0.001002, ..., 0.001128
-              seq 1: 0.002001, 0.002002, ..., 0.002128
-        Same values across all n_heads.
-        """
-        # Create element indices [1, 2, ..., d_head]
-        elem_idx = torch.arange(1, d_head + 1, dtype=torch.float32, device=device)
-        # Create sequence indices [1, 2, ..., seq_len]
-        seq_idx = torch.arange(1, seq_len + 1, dtype=torch.float32, device=device)
-
-        # Compute values: seq_idx * 0.001 + elem_idx * 0.000001
-        # Shape: (seq_len, d_head)
-        values = seq_idx[:, None] * 0.001 + elem_idx[None, :] * 0.000001
-
-        # Expand to (batch_size, seq_len, n_heads, d_head)
-        values = values[None, :, None, :].expand(batch_size, seq_len, n_heads, d_head)
-        return values.to(dtype=dtype).contiguous()
+    print(f"Expected smem: {smem_bytes} bytes ({smem_bytes / 1024:.1f} KB)")
 
     q = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
     k = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
@@ -202,6 +187,120 @@ def test_debug_minimal_kernel():
         assert result.shape == q.shape, "Output shape mismatch"
         assert not has_nan, "Output contains NaN"
         assert not has_inf, "Output contains Inf"
+
+    except Exception as e:
+        print(f"Kernel failed with: {type(e).__name__}: {e}")
+        raise
+
+
+@pytest.mark.skipif(
+    condition=os.environ.get("FA_DEBUG", "false").lower() != "true",
+    reason="Debug entry. Skip for normal tests",
+)
+def test_debug_double_buffer():
+    """Debug test for double buffer implementation (mma_double_buffer_loads=True).
+
+    Uses load_2_2_2_tiles config which actually triggers double buffering.
+    When Q/K/V_mma_load_K_tiles > 0 AND mma_double_buffer_loads=True,
+    the mma_load_stages becomes 2, enabling double buffering.
+
+    Uses B_r=64, B_c=32 because for B_r=64, B_c=64, configs with
+    Q_mma_load_K_tiles != 0 are excluded by should_autotune_config().
+    """
+    from toy_attn.flash_attn_v2.kernel_configs import FlashForwardKernelConfig
+
+    B_r, B_c = 64, 32  # B_c=32 to allow Q_mma_load_K_tiles=2
+    d_head = 128
+    batch_size = 1
+    n_heads = 1
+    seq_len = 128
+
+    device = "cuda:0"
+    dtype = torch.float16
+
+    # Config with double buffer ACTUALLY enabled (load_2_2_2_tiles+buffer)
+    # Q/K/V_mma_load_K_tiles=2 means load 2 K-tiles per iteration during MMA
+    # mma_double_buffer_loads=True means use 2 stages for these loads
+    cfg = FlashForwardKernelConfig(
+        dtype=DType.FP16,
+        d_head=d_head,
+        B_r=B_r,
+        B_c=B_c,
+        n_warps=4,
+        async_copy=True,
+        eager_load_blocks=True,
+        swizzled=False,
+        Q_mma_load_K_tiles=2,  # Non-zero to trigger double buffer
+        K_mma_load_K_tiles=2,  # Non-zero to trigger double buffer
+        V_mma_load_K_tiles=2,  # Non-zero to trigger double buffer
+        mma_double_buffer_loads=True,  # Double buffer enabled
+        optimized_softmax=False,
+    )
+
+    print(f"\n=== Debug Double Buffer Test ===")
+    print(f"Config: {cfg.short_form()}")
+    print(f"Tensor shape: ({batch_size}, {seq_len}, {n_heads}, {d_head})")
+    print(f"B_r={B_r}, B_c={B_c}, n_Q_blocks={seq_len // B_r}, n_KV_blocks={seq_len // B_c}")
+
+    q = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
+    k = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
+    v = make_debug_tensor(batch_size, seq_len, n_heads, d_head, dtype, device)
+
+    print(f"Q stride: {q.stride()}")
+    print(f"Q is contiguous: {q.is_contiguous()}")
+
+    torch.cuda.synchronize()
+    print("Tensors created, calling kernel...")
+
+    try:
+        result = flash_attention.forward(cfg, q, k, v)
+        torch.cuda.synchronize()
+        print(f"Kernel completed! Result shape: {result.shape}")
+
+        # Check for NaN/Inf in output
+        has_nan = torch.isnan(result).any().item()
+        has_inf = torch.isinf(result).any().item()
+        print(f"Result has NaN: {has_nan}, has Inf: {has_inf}")
+
+        if has_nan or has_inf:
+            nan_mask = torch.isnan(result) | torch.isinf(result)
+            nan_indices = nan_mask.nonzero()
+            print(f"First few NaN/Inf indices: {nan_indices[:5].tolist()}")
+            print(f"Result sample (first few): {result.flatten()[:10].tolist()}")
+
+        # Compare with reference
+        expected = py_flash_attention(q, k, v, upcast=True)
+        diff = (result - expected).abs().max().item()
+        print(f"Max diff from reference: {diff:.6e}")
+
+        # Compare with non-buffered baseline (same tile config but no double buffer)
+        cfg_no_buffer = FlashForwardKernelConfig(
+            dtype=DType.FP16,
+            d_head=d_head,
+            B_r=B_r,
+            B_c=B_c,
+            n_warps=4,
+            async_copy=True,
+            eager_load_blocks=True,
+            swizzled=False,
+            Q_mma_load_K_tiles=2,
+            K_mma_load_K_tiles=2,
+            V_mma_load_K_tiles=2,
+            mma_double_buffer_loads=False,  # No double buffer
+            optimized_softmax=False,
+        )
+        result_no_buffer = flash_attention.forward(cfg_no_buffer, q, k, v)
+        diff_no_buffer = (result_no_buffer - expected).abs().max().item()
+        diff_between = (result - result_no_buffer).abs().max().item()
+        print(f"Non-buffered max diff from reference: {diff_no_buffer:.6e}")
+        print(f"Diff between buffered and non-buffered: {diff_between:.6e}")
+
+        assert result.shape == q.shape, "Output shape mismatch"
+        assert not has_nan, "Output contains NaN"
+        assert not has_inf, "Output contains Inf"
+        assert diff <= diff_no_buffer * 2, (
+            f"Double buffer diff ({diff:.6e}) exceeds threshold (2 * non-buffered = {diff_no_buffer * 2:.6e})"
+        )
 
     except Exception as e:
         print(f"Kernel failed with: {type(e).__name__}: {e}")

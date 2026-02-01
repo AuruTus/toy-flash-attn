@@ -29,7 +29,7 @@ struct GEMM {
     using C_t     = _C_t;
     using value_t = _value_t;
 
-    static constexpr int TotalTiles         = total_K_fragments;
+    static constexpr int TotalKTiles       = total_K_fragments;
     static constexpr int LoadKTilesPerIter = load_K_fragments_per_iter;
 
     static constexpr bool DoubleBufferA =
@@ -104,14 +104,14 @@ matmul(typename GEMM::A_t& A, typename GEMM::B_t& B, typename GEMM::C_t& C) {
     }
 
     FA_UNROLL
-    for (int k_outer_fragment = 0; k_outer_fragment < GEMM::TotalTiles;
+    for (int k_outer_fragment = 0; k_outer_fragment < GEMM::TotalKTiles;
          k_outer_fragment += GEMM::LoadKTilesPerIter) {
         if constexpr (!A_t::load_entire_block_into_rf ||
                       !B_t::load_entire_block_into_rf) {
             int k_load_fragment =
                 k_outer_fragment +
-                (GEMM::DoubleBufferA ? GEMM::LoadKTilesPerIter : 0);
-            if (k_load_fragment < GEMM::TotalTiles) {
+                (GEMM::DoubleBuffer ? GEMM::LoadKTilesPerIter : 0);
+            if (k_load_fragment < GEMM::TotalKTiles) {
                 if constexpr (!A_t::load_entire_block_into_rf) {
                     A.copy_SM2RF(A_stage_toggle ^ A_stage, k_load_fragment);
                 }
