@@ -4,15 +4,179 @@
 
 #include <map>
 
+#include "concepts.h"
 #include "flash_attention.cuh"
 #include "forward_kernel.cuh"
 
 namespace flash_attn_v2 {
 
-typedef void (*forward_kernel_fn)(const ForwardKernelArgs);
+using forward_kernel_fn = void (*)(const ForwardKernelArgs);
 
-std::map<FlashForwardKernelConfig, forward_kernel_fn>
-    forward_kernels = {
+
+// explicitly instantiate template and assert concepts to help clangd analyze
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 32, 4, true, true, true, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 0, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, false, 0, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 0, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 64, 64, 4, true, true, true, 0, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, false, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 32, 4, true, true, true, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, false, 2, 2, 2, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 0, true, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, false, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, false, true}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, true, false}>>);
+static_assert(kernel_trait<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, true, true}>>);
+
+
+auto forward_kernels = std::map<FlashForwardKernelConfig, forward_kernel_fn>{
         // (FP16, 128, 64, 32, 4): async+eager+load_2_2_0_tiles
         {FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, false, false}, &flash_forward_kernel<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kFloat16, 128, 64, 32, 4, true, true, false, 2, 2, 0, false, false}>>},
         // (FP16, 128, 64, 32, 4): async+eager+load_2_2_0_tiles+opt_softmax
@@ -334,4 +498,4 @@ std::map<FlashForwardKernelConfig, forward_kernel_fn>
         // (BF16, 128, 128, 64, 4): async+eager+swizzled+load_2_2_2_tiles+buffer+opt_softmax
         {FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, true, true}, &flash_forward_kernel<StaticForwardKernelConfig<FlashForwardKernelConfig{torch::kBFloat16, 128, 128, 64, 4, true, true, true, 2, 2, 2, true, true}>>}
 };
-} // namespace flash
+} // namespace flash_attn_v2

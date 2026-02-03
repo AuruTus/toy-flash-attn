@@ -1,9 +1,10 @@
 import itertools
 import os
 import re
-from dataclasses import dataclass, replace
-from enum import IntEnum
 
+from enum import IntEnum
+from dataclasses import dataclass, replace
+from typing import Union
 
 # This is a hack to avoid importing torch.
 class DType(IntEnum):
@@ -54,14 +55,14 @@ class DType(IntEnum):
 ELEM_SIZE = 2  # bytes
 
 
-def tile_softmax_flop(B_r, B_c, d_head) -> int:
+def tile_softmax_flop(B_r: int, B_c: int, d_head: int) -> int:
     # Kernel 6-16
     return B_r * (4 * B_c + d_head + 4)
     # Kernel 1-5
     return B_r * (5 * B_c + d_head + 2)
 
 
-def kv_tile_flop(B_r, B_c, d_head) -> int:
+def kv_tile_flop(B_r: int, B_c: int, d_head: int) -> int:
     QK_flops = 2 * B_r * d_head * B_c
     PV_flops = 2 * B_r * B_c * d_head
 
@@ -70,15 +71,15 @@ def kv_tile_flop(B_r, B_c, d_head) -> int:
     return QK_flops + PV_flops + softmax_flops
 
 
-def gmem_transfer_size(B_r, B_c, d_head) -> int:
+def gmem_transfer_size(B_r: int, B_c: int, d_head: int) -> int:
     return d_head * 2 * (B_r + B_c) * ELEM_SIZE
 
 
-def arithmetic_intensity(B_r, B_c, kv_seq_len, d_head) -> float:
+def arithmetic_intensity(B_r: int, B_c: int, kv_seq_len: int, d_head: int) -> float:
     return (kv_tile_flop(B_r, B_c, d_head) * (kv_seq_len // B_c)) / gmem_transfer_size(B_r, kv_seq_len, d_head)
 
 
-def calc_total_flop(n_samples, n_heads, seq_len, B_r, B_c, d_head):
+def calc_total_flop(n_samples: int, n_heads: int, seq_len: int, B_r: int, B_c: int, d_head: int) -> int:
     assert seq_len % B_r == 0
     assert seq_len % B_c == 0
 
@@ -91,7 +92,7 @@ def calc_total_flop(n_samples, n_heads, seq_len, B_r, B_c, d_head):
     return head_sample_flops * n_samples * n_heads
 
 
-def calc_self_attn_flop(n_samples, n_heads, seq_len, d_head):
+def calc_self_attn_flop(n_samples: int, n_heads: int, seq_len: int, d_head: int) -> int:
     return n_samples * n_heads * (4 * seq_len**2 * d_head + 6 * seq_len**2)
 
 
@@ -111,10 +112,10 @@ class FlashForwardKernelConfig:
     mma_double_buffer_loads: bool
     optimized_softmax: bool
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.short_form()
 
-    def short_form(self, include_d_head=True, include_tup=True):
+    def short_form(self, include_d_head: bool = True, include_tup: bool = True) -> str:
         d_head_str = f"{self.d_head}, " if include_d_head else ""
         base = f"({self.dtype.name}, {d_head_str}{self.B_r}, {self.B_c}, {self.n_warps}): "
         if not include_tup:
@@ -136,7 +137,7 @@ class FlashForwardKernelConfig:
         return base + "+".join(strs)
 
     def to_cpp_struct(self) -> str:
-        def vstr(v):
+        def vstr(v: Union[bool, int]) -> str:
             if isinstance(v, bool):
                 return str(v).lower()
             else:
@@ -162,7 +163,7 @@ class FlashForwardKernelConfig:
         return calc_self_attn_flop(n_samples, n_heads, seq_len, self.d_head)
 
 
-def _parse_flash_forward_demanged_name(line) -> FlashForwardKernelConfig:
+def _parse_flash_forward_demanged_name(line: str) -> FlashForwardKernelConfig:
     # Regular expression to extract the kernel configuration from the line
     # void flash_forward_kernel<FlashForwardKernelConfig{5, 128, 64, 64, 4, 1, 1, 1, 0, 2, 0, 1, 1}>(FAForwardArgs)
     kernel_config_pattern = r"FlashForwardKernelConfig\{([^}]+)\}"
@@ -171,7 +172,7 @@ def _parse_flash_forward_demanged_name(line) -> FlashForwardKernelConfig:
     if not match:
         raise ValueError("Invalid line format: FlashForwardKernelConfig not found")
 
-    def convert_v(v):
+    def convert_v(v: str) -> int:
         if v == "true":
             return 1
         elif v == "false":
@@ -329,9 +330,7 @@ REF_KERNEL_NAME_MAP = {
 def transform_kernel_name_to_short_form(kernel_name: str) -> str:
     if kernel_name in REF_KERNEL_NAME_MAP:
         return REF_KERNEL_NAME_MAP[kernel_name]
-    short_form = parse_kernel_name_into_config(kernel_name).short_form()
-
-    return short_form
+    return parse_kernel_name_into_config(kernel_name).short_form()
 
 
 def transform_kernel_name(kernel_name: str) -> str:
@@ -361,7 +360,7 @@ def should_autotune_config(cfg: FlashForwardKernelConfig) -> bool:
     return True
 
 
-def get_autotuning_kernel_configs(dtypes=[DType.BF16, DType.FP16]):
+def get_autotuning_kernel_configs(dtypes: list[DType] = [DType.BF16, DType.FP16]) -> list[FlashForwardKernelConfig]:
     d_heads = [128]
     B_rs = [64, 128]
     B_cs = [32, 64]
@@ -398,7 +397,7 @@ def get_autotuning_kernel_configs(dtypes=[DType.BF16, DType.FP16]):
     ]
 
 
-def get_kernel_progression_configs(all_block_sizes=False):
+def get_kernel_progression_configs(all_block_sizes: bool = False) -> list[FlashForwardKernelConfig]:
     base_progression = [
         "(FP16, 128, 64, 64, 4): async+load_0_0_0_tiles",
         "(FP16, 128, 64, 64, 4): async+swizzled+load_0_0_0_tiles",
@@ -424,7 +423,7 @@ def get_kernel_progression_configs(all_block_sizes=False):
     return kernels
 
 
-def get_kernels_to_build():
+def get_kernels_to_build() -> list[FlashForwardKernelConfig]:
     cfgs = set()
     # cfgs.update(get_kernel_progression_configs())
     cfgs.update(get_autotuning_kernel_configs())
@@ -432,7 +431,7 @@ def get_kernels_to_build():
     return sorted(cfgs)
 
 
-def get_kernel_configs(kernels_key=""):
+def get_kernel_configs(kernels_key: str = "") -> list[FlashForwardKernelConfig]:
     # This is a hack to set kernels to test globally without using distributed flags
     if kernels_key == "":
         kernels_key = os.environ.get("KERNELS", "")
