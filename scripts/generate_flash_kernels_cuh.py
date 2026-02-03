@@ -5,7 +5,7 @@ import sys
 
 import pathlib
 
-from typing import Union, Optional, Any
+from typing import Union, Optional
 
 # ===============================
 #           local modules
