@@ -119,11 +119,11 @@ FA_DEVICE void copy_block_GSM(
     const int lane_id
 ) {
     // Number of row iterations: total_rows / rows_per_iter
-    // e.g., (8 fragments * 8 rows/frag) / 4 rows/iter = 16 iterations
+    // e.g., (2 fragments * 8 rows/frag) / 4 rows/iter = 4 iterations
     constexpr auto n_row_iters =
         CFG.GSM.row_fragments * ROWS_PER_FRAGMENT / GSM_LDST_ROWS_PER_ITER;
 
-    // 32 threads handle 4 rows, so 8 threads per row → 8 col fragments in
+    // 32 threads handle 4 rows, so 8 threads per row → 8 col fragments vectorized read in
     // parallel
     constexpr auto col_fragments_per_iter = WARP_SIZE / GSM_LDST_ROWS_PER_ITER;
     // Total column fragments per row: smem_cols / 8 elements per fragment
