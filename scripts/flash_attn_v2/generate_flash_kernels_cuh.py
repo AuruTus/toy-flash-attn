@@ -10,9 +10,10 @@ from typing import Union, Optional
 # ===============================
 #           local modules
 # ===============================
-
 SCRIPTS_DIR = pathlib.Path(os.path.dirname(__file__))
-sys.path.append(os.path.abspath(SCRIPTS_DIR.parent))
+sys.path.insert(0, str(SCRIPTS_DIR.parent))
+from script_utils import setup_project_imports
+setup_project_imports(SCRIPTS_DIR)
 
 from toy_attn.flash_attn_v2.kernel_configs import (  # noqa: E402
     get_kernels_to_build,

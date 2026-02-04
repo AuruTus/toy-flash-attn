@@ -9,8 +9,10 @@ import pathlib
 #           local modules
 # ===============================
 BENCH_SCRIPTS_DIR = pathlib.Path(os.path.dirname(__file__))
-PROJECT_DIR = BENCH_SCRIPTS_DIR.parent.parent
-sys.path.append(os.path.abspath(PROJECT_DIR))
+SCRIPTS_DIR = BENCH_SCRIPTS_DIR.parent.parent  # scripts/flash_attn_v2/benchmark -> scripts
+sys.path.insert(0, str(SCRIPTS_DIR))
+from script_utils import setup_project_imports  # noqa: E402
+PROJECT_DIR = setup_project_imports(BENCH_SCRIPTS_DIR)
 
 from toy_attn.flash_attn_v2.kernel_configs import (  # noqa: E402
     DType,

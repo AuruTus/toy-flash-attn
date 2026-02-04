@@ -15,8 +15,10 @@ from prettytable import PrettyTable
 #           local modules
 # ===============================
 BENCH_SCRIPTS_DIR = pathlib.Path(os.path.dirname(__file__))
-PROJECT_DIR = BENCH_SCRIPTS_DIR.parent.parent
-sys.path.append(os.path.abspath(PROJECT_DIR))
+SCRIPTS_DIR = BENCH_SCRIPTS_DIR.parent.parent  # scripts/flash_attn_v2/benchmark -> scripts
+sys.path.insert(0, str(SCRIPTS_DIR))
+from script_utils import setup_project_imports  # noqa: E402
+PROJECT_DIR = setup_project_imports(BENCH_SCRIPTS_DIR)
 
 from toy_attn.flash_attn_v2.kernel_configs import (  # noqa: E402
     calc_self_attn_flop,
@@ -314,7 +316,12 @@ def call_ncu_and_store_output(program: list[str]):
         )
 
         if result.returncode != 0:
-            print(f"Error running ncu: {result.stderr}")
+            # ncu often prints errors to stdout (e.g. ==ERROR== lines)
+            error_lines = [l for l in result.stdout.splitlines() if "==ERROR==" in l]
+            if error_lines:
+                print(f"Error running ncu:\n" + "\n".join(error_lines))
+            else:
+                print(f"Error running ncu (exit code {result.returncode}): {result.stderr}")
             return {}
 
         # Skip lines until we reach the header row (the one that starts with "ID")
@@ -342,7 +349,7 @@ def call_ncu_and_store_output(program: list[str]):
         return {}
 
 
-PROGRAM = ["./scripts/benchmark/run_kernels.py"]
+PROGRAM = [sys.executable, "./scripts/benchmark/run_kernels.py"]
 
 
 def parse_cmd_args():
