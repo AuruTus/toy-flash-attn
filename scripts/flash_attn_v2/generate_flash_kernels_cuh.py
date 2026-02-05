@@ -12,7 +12,8 @@ from typing import Union, Optional
 # ===============================
 SCRIPTS_DIR = pathlib.Path(os.path.dirname(__file__))
 sys.path.insert(0, str(SCRIPTS_DIR.parent))
-from script_utils import setup_project_imports
+from script_utils import setup_project_imports  # noqa: E402
+
 setup_project_imports(SCRIPTS_DIR)
 
 from toy_attn.flash_attn_v2.kernel_configs import (  # noqa: E402

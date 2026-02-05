@@ -319,7 +319,7 @@ def call_ncu_and_store_output(program: list[str]):
             # ncu often prints errors to stdout (e.g. ==ERROR== lines)
             error_lines = [l for l in result.stdout.splitlines() if "==ERROR==" in l]
             if error_lines:
-                print(f"Error running ncu:\n" + "\n".join(error_lines))
+                print("Error running ncu:\n" + "\n".join(error_lines))
             else:
                 print(f"Error running ncu (exit code {result.returncode}): {result.stderr}")
             return {}
