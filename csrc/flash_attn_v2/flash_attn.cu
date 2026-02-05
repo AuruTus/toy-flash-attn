@@ -6,7 +6,6 @@
 #include <cuda_runtime.h>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include "cuda_utils.cuh"
 #include "flash_kernels.cuh"
